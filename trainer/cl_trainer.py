@@ -29,7 +29,7 @@ class cl_Trainer:
       
 
 
-    def cl_train(self)->None:
+    def cl_train(self)-> None:
         '''this function contains full training logic for classifiers like: XGBoost, SVM, LDA, ..., after training 
         it saves the trained model
 
@@ -43,30 +43,7 @@ class cl_Trainer:
         # prepare X_train
         self.model.fit(self.X_train_np, self.y_train_np)
 
-        # # Hyperparameter grid
-        # param_grid = {
-        #     "learning_rate": [0.01, 0.1, 0.2],
-        #     "n_estimators": [100, 300, 500],
-        #     "max_depth": [3, 5, 7],
-        #     "min_child_weight": [1, 3, 5],
-        #     "subsample": [0.6, 0.8, 1.0],
-        #     "colsample_bytree": [0.6, 0.8, 1.0],
-        #     "reg_lambda": [1, 5, 10]
-        # }
-
-        # # Grid Search with Cross Validation
-        # grid_search = GridSearchCV(self.model, param_grid, scoring="neg_log_loss", cv=3, verbose=1, n_jobs=-1)
-        # grid_search.fit(self.X_train_np, self.y_train_np)
-
-        # # Best Parameters
-        # print("Best Parameters:", grid_search.best_params_)
-
-        # # Train with best parameters
-        # best_model = grid_search.best_estimator_
-
-        axis_dic = {0: "Sagittal", 1: "Coronal", 2: "Axial"} 
         # Save the trained model
-        # best_model.save_model(f'saved_model_{self.modality}_{self.model_type}_{self.config.dataset}.model') # for grid search
         self.model.save_model(f'saved_model_{self.modality}_{self.config.fold}.model')  
         
         return

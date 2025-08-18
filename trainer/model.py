@@ -466,6 +466,9 @@ class Model:
         Returns:
             acc (_type:float_): the accuracy of the model on the test dataset
             mcc (_type:float_): the Matthews correlation coefficient of the model on the test dataset
+            f1_w (_type:float_): The weighted average of f1_score of the model on the test set
+            recall_w (_type:float_): The weighted average of recall of the model on the test set
+            precision_w (_type:float_): The weighted average of precision of the model on the test set
 
         '''
         # Set the random seed for reproducibility
@@ -597,9 +600,12 @@ class Model:
 
         return acc, mcc
 
-################################# End of codes for Intermediate_1 Fusion ###############################
-#################################### Codes for Intermediate_2 Fusion ###################################
+
+########################################### End of code for Intermediate_1 Fusion ########################################
+
+############################################### Code for Intermediate_2 Fusion ###########################################
     
+
     def _train_intermediate_2(self, train_slice_df, val_slice_df)-> None:
         '''This function handles the training process for the intermediate_1 fusion method.
 
@@ -613,10 +619,6 @@ class Model:
         '''
         # Set the random seed for reproducibility
         self.set_seed()
-
-        # # create dataloaders
-        # train_dataset, train_dataloader = get_dataloader_intermediate_2(metadata_df=train_metadata_df, config=config, train_flag=1, batch_size=config.batch_size_fused)
-        # val_dataset, val_dataloader = get_dataloader_intermediate_2(metadata_df=val_metadata_df, config=config, train_flag=0, batch_size=config.batch_size_fused)
 
         # # create dataloader with sampler
         train_dataset, train_dataloader = get_dataloader_intermediate_2_sampler(metadata_df=train_slice_df, config=self.config, train_flag=1, batch_size=self.config.batch_size_fused)
@@ -632,12 +634,8 @@ class Model:
         # Define loss function
         match self.config.num_class:
             case 2: criterion = nn.BCEWithLogitsLoss()  # OR nn.BCELoss()   For binary classification
-            # case 2: criterion = lambda outputs, targets: sigmoid_focal_loss(outputs, targets, alpha=0.5, gamma=2, reduction="mean") # For binary classification considering the imbalance dataset
             case 3: criterion = nn.CrossEntropyLoss()  # For multi-class classification
 
-        # # Define optimizer
-        # optimizer = optim.Adam(model.parameters(), lr=config.lr_fused, weight_decay=config.lmbda)
-        # # scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5) # there should be a kind of strategy to change the learning rate, I have the cyclic in the trainer????
         
         # Define optimizer with different learning rates
         optimizer = optim.AdamW([
@@ -661,10 +659,9 @@ class Model:
 
         # Train the model
         nn_trainer.nn_train()
-        return  
 
 
-    def _test_intermediate_2(self, test_slice_df, modality, training_time_spent)-> tuple[float, float]:
+    def _test_intermediate_2(self, test_slice_df, modality, training_time_spent)-> tuple[float, float, float, float, float]:
         '''This function is the testing function for the intermediate_2 fusion method
         
         Args:
@@ -674,6 +671,9 @@ class Model:
         Returns:
             acc (_type:float_): the accuracy of the model on the test dataset
             mcc (_type:float_): the Matthews correlation coefficient of the model on the test dataset
+            f1_w (_type:float_): The weighted average of f1_score of the model on the test set
+            recall_w (_type:float_): The weighted average of recall of the model on the test set
+            precision_w (_type:float_): The weighted average of precision of the model on the test set
 
         '''
         # Set the random seed for reproducibility
@@ -688,7 +688,6 @@ class Model:
         # Load the saved state_dict
         try:
             model.load_state_dict(torch.load(f'best_model_{self.config.fold}.pth' , weights_only = True))
-            # logging.info(f'loaded model: best_model_{config.fusion_method}_{modality}_{config.fused_model}_{axis_dic[config.axis]}_43_56_396_seed_{config.seed}.pth')
         
         except FileNotFoundError:
             print("Model checkpoint not found. Ensure the path to 'best_model.pth' is correct.")
@@ -697,13 +696,16 @@ class Model:
         y_labels, y_outputs, y_predicted, test_loss = self._test_loop(model, test_dataloader) 
 
         # calculate the metrics for the model and save the results in three file of .text, .json, and .csv
-        acc, mcc = calculate_save_metrics_intermediate_2(self.config, modality, y_labels, y_predicted, training_time_spent, test_loss)
+        acc, mcc, f1_w, recall_w, precision_w  = calculate_save_metrics_intermediate_2(self.config, modality, y_labels, y_predicted, training_time_spent, test_loss)
 
-        return acc, mcc
+        return acc, mcc, f1_w, recall_w, precision_w 
     
-################################# End of codes for Intermediate_2 Fusion ###############################
-########################################## Codes for Late Fusion #######################################   
     
+############################################ End of code for Intermediate_2 Fusion ########################################
+
+##################################################### Code for Late Fusion ################################################   
+
+
     def _train_late(self, train_slice_df, val_slice_df)-> None:
         '''This function handles the training process for the late fusion method.
 
@@ -745,8 +747,8 @@ class Model:
         print('Train phase completed.')
         # Calculate the total training time
         total_training_time = sum(training_time_dict.values()) 
-        print(f'Total training time for all modalities in fold {self.config.fold} is: {total_training_time:.2f} minutes')
-        return
+        print(f'Total training time for all modalities in fold {self.config.fold} is: {total_training_time:.2f} minutes')    
+
 
     def _train_model_late(self, train_slice_df, val_slice_df, modality)-> None:
         '''This function is the internal training function (modality specific) for the late fusion method
@@ -772,9 +774,6 @@ class Model:
             learning_rate = self.config.lr_mri
             batch_size = self.config.batch_size_mri
 
-        # # create dataloaders
-        # train_dataset, train_dataloader = get_dataloader_late(metadata_df=train_metadata_df, config=config, train_flag=1, modality=modality, batch_size=batch_size)
-        # val_dataset, val_dataloader = get_dataloader_late(metadata_df=val_metadata_df, config=config, train_flag=0, modality=modality, batch_size=batch_size)
 
         # create dataloaders with sampler
         train_dataset, train_dataloader = get_dataloader_late_sampler(metadata_df=train_slice_df, config=self.config, train_flag=1, modality=modality, batch_size=batch_size)
@@ -799,13 +798,11 @@ class Model:
             # Define loss function
             match self.config.num_class:
                 case 2: criterion = nn.BCEWithLogitsLoss()  # OR nn.BCELoss()   For binary classification
-                # https://ieeexplore.ieee.org/stamp/stamp.jsp?arnumber=8417976
-                #case 2: criterion = lambda outputs, targets: sigmoid_focal_loss(outputs, targets, alpha=0.75, gamma=4, reduction="mean") # For binary classification considering the imbalance dataset
                 case 3: criterion = nn.CrossEntropyLoss()  # For multi-class classification
                     
             # Define optimizer
             optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=self.config.lmbda)
-            # scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5) # there should be a kind of strategy to change the learning rate, I have the cyclic in the trainer????
+
 
             nn_trainer = nn_Trainer_late(model, modality, criterion, optimizer,
                                 config = self.config,
@@ -815,10 +812,9 @@ class Model:
                                 )
 
             nn_trainer.nn_train()
-            return
 
    
-    def _test_late(self, test_slice_df, training_time_spent )-> tuple[float, float]:
+    def _test_late(self, test_slice_df, training_time_spent )-> tuple[float, float, float, float, float]:
         '''This function is the testing function for the late fusion method
         
         Args:
@@ -828,6 +824,9 @@ class Model:
         Returns:
             acc (_type:float_): the accuracy of the model on the test dataset
             mcc (_type:float_): the Matthews correlation coefficient of the model on the test dataset
+            f1_w (_type:float_): The weighted average of f1_score of the model on the test set
+            recall_w (_type:float_): The weighted average of recall of the model on the test set
+            precision_w (_type:float_): The weighted average of precision of the model on the test set
 
         '''
         # Set the random seed for reproducibility
@@ -862,9 +861,9 @@ class Model:
         y_labels = pred_dic[f'label_{self.config.modalities[0]}']
 
         # calculate the metrics for the late fused model and save the results in three file of .text, .json, and .csv
-        acc, mcc = calculate_save_metrics_late(self.config, modality, y_labels, y_predicted_fused, multi, training_time_spent, t_loss) # y_labels is the y_labels for the first modality in config.modalities list 
+        acc, mcc, f1_w, recall_w, precision_w = calculate_save_metrics_late(self.config, modality, y_labels, y_predicted_fused, multi, training_time_spent, t_loss) # y_labels is the y_labels for the first modality in config.modalities list 
 
-        return acc, mcc
+        return acc, mcc, f1_w, recall_w, precision_w
     
 
     def _predict_with_modality_specific_model(self, test_slice_df, modality)-> tuple[np.ndarray, np.ndarray, np.ndarray]:

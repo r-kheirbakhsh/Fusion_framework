@@ -1,7 +1,6 @@
 import torch
 import wandb
 from torchmetrics.classification import BinaryMatthewsCorrCoef, MulticlassMatthewsCorrCoef, BinaryAccuracy, MulticlassAccuracy
-from torch.optim.lr_scheduler import CyclicLR
 from sklearn.metrics import matthews_corrcoef
 import numpy as np
 
@@ -130,9 +129,6 @@ class nn_Trainer_early:
                 loss.backward()
                 self.optimizer.step()
 
-                # Step the learning rate scheduler
-                #scheduler.step()
-
                 train_loss += loss.item()
 
                 total += labels.size(0)
@@ -140,8 +136,6 @@ class nn_Trainer_early:
                 labels_train_list.append(labels.cpu().detach().numpy())
                 predicted_train_list.append(predicted.cpu().detach().numpy())
 
-            # ######################################## for the train/test
-            # torch.save(self.model.state_dict(), best_model_path)
     
             train_loss /= len(self.train_dataloader)  # it is the average loss for each batch
             train_accuracy = correct / total # total (number of instances in the dataloader) is correct, len(self.train_dataloader) is the number of batches in the dataloader
@@ -203,14 +197,7 @@ class nn_Trainer_early:
                 # Log metrics to wandb
                 wandb.log({'Train Loss': train_loss, 'Val Loss': val_loss, 'Train Accuracy': train_accuracy, 'Val Accuracy': val_accuracy, 'Train MCC': train_mcc, 'Val MCC': val_mcc})
 
-            # # Save the best model
-            # if val_loss < best_val_loss: # The criteria for choosing the best model should be aligned with the loss function - discuss it with Aonghus???
-            #     best_val_loss = val_loss
-            #     torch.save(self.model.state_dict(), best_model_path)
-            #     print(f"Best model saved with validation loss: {val_loss:.5f}")
 
-
-            ###################################################### for train/test
             # Early stopping logic
             if val_loss < best_val_loss - 1e-4: # a delta threshold to avoid stopping on tiny fluctuations  
                 best_val_loss = val_loss
