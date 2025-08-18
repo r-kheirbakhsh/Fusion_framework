@@ -183,8 +183,10 @@ class Model:
         y_predicted = np.array(y_predicted)
 
         return y_labels, y_outputs, y_predicted, test_loss
-        
+
+       
 ################################################ Code for Early_1 Fusion ################################################
+
 
     def _train_early_1(self, train_slice_df, val_slice_df, test_slice_df)-> None:
         '''This function handles the training process for the early_1 fusion method.
@@ -398,10 +400,12 @@ class Model:
             return None
         else:
             return acc, mcc, f1_w, recall_w, precision_w       
+        
             
-################################# End of code for Early_1 Fusion #################################
+########################################## End of code for Early_1 Fusion ################################################
 
-#################################### Code for Early_2 Fusion #####################################            
+############################################## Code for Early_2 Fusion ###################################################            
+
 
     def _train_early_2(self, train_slice_df, val_slice_df)-> None:
         '''This function handles the training process for the early_2 fusion method.
@@ -487,9 +491,12 @@ class Model:
         acc, mcc, f1_w, recall_w, precision_w = calculate_save_metrics_early_2(self.config, modality, y_labels, y_predicted, training_time_spent, test_loss)
 
         return acc, mcc, f1_w, recall_w, precision_w 
+    
      
-################################# End of codes for Early_2 Fusion ################################# 
-################################# Codes for Intermediate_1 Fusion #################################
+################################################### End of codes for Early_2 Fusion ################################################ 
+
+#################################################### Code for Intermediate_1 Fusion ###############################################
+
 
     def _train_intermediate_1(self, train_slice_df, val_slice_df)-> None:
         '''This function handles the training process for the intermediate_1 fusion method.

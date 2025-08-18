@@ -6,7 +6,7 @@
 from pytorch_tabular.models.autoint import AutoIntConfig
 from pytorch_tabular.models.common.heads import LinearHeadConfig
 
-from model.models_classes import init_weights, AutoIntModel, MLP_1024_512_256_128, CustomDenseNet121, CustomSwin_b
+from model.models_classes import init_weights, AutoIntModel, MLP_1024_512_256_128, CustomDenseNet121, CustomSwin_b, Inter_1_concat
 
 
 
@@ -38,8 +38,7 @@ def model_selection_early(config, model_type):
         model_config.output_cardinality = [2]
         model_config.output_dim = 1  # For binary classification
         model_config.head_config = head_config.__dict__
-        model = AutoIntModel(config=model_config)
-        
+        model = AutoIntModel(config=model_config)        
 
     elif model_type == 'MLP_1024_512_256_128':
         # Initialize MLP model
@@ -56,15 +55,15 @@ def model_selection_early(config, model_type):
         # Apply Kaiming initialization
         init_weights(model, init_type="kaiming")
 
-
     elif model_type == 'denseNet121':
         model = CustomDenseNet121(config, in_channels=1, with_head=1)
 
-
     elif model_type == 'swin_b':
         model = CustomSwin_b(config, in_channels=1, with_head=1)
-    
-    
+
+    elif model_type == 'Inter_1_concat':        
+        model = Inter_1_concat(config=config)    
+
     else:
         raise ValueError(f"Unknown model type: {model_type}")
 
