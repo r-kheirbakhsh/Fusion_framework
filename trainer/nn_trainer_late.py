@@ -1,0 +1,230 @@
+import torch
+import wandb
+import numpy as np
+from torchmetrics.classification import BinaryMatthewsCorrCoef, MulticlassMatthewsCorrCoef, BinaryAccuracy, MulticlassAccuracy
+from torch.optim.lr_scheduler import CyclicLR
+from sklearn.metrics import matthews_corrcoef
+
+
+
+class nn_Trainer_late:
+    '''The trainer class for Late fusion pipeline nas feature extraction phase of Early_1 fusion
+    
+    '''
+    def __init__(self, model, modality, criterion, optimizer, config, device, train_dataloader, val_dataloader):
+        ''' Sets the class variables
+
+        Args:
+            model (_type:class_): the model to be trained
+            modality (_type:str_): the modality for which the model should be trained, it can be 'Clinical' or 'T1_bias' or 'T1c_bias' or 'T2_bias' or 'FLAIR_bias'
+            criterion (_type:class_): the loss function to be used for training
+            optimizer (_type:class_): the optimizer to be used for training
+            config (_type:class_): it contains the parameters according which the model will be trained
+            device (_type:_): the device to be used for training
+            train_dataloader (_type:class_): the dataloader for the training set
+            val_dataloader (_type:class_): the dataloader for the validation set
+
+        '''
+        self.model = model
+        self.modality = modality
+        self.criterion = criterion
+        self.optimizer = optimizer
+        self.config = config
+        self.device = device
+        self.train_dataloader = train_dataloader
+        self.val_dataloader = val_dataloader
+        self.early_stopping_patience = 10
+
+
+    def nn_train(self):
+        '''this function contains full training logic for training and run all the epochs
+        
+        '''
+        if self.modality == 'Clinical':
+            model_type = self.config.cl_model
+            learning_rate = self.config.lr_cl
+            n_epochs = self.config.n_epochs_cl
+            batch_size = self.config.batch_size_cl
+            pretrained = 0
+
+        else:
+            model_type = self.config.mri_model
+            learning_rate = self.config.lr_mri
+            n_epochs = self.config.n_epochs_mri
+            batch_size = self.config.batch_size_mri
+            pretrained = self.config.pretrained
+
+        axis_dic = {0: "Sagittal", 1: "Coronal", 2: "Axial"}  
+        # Initialize lists to store training history on wandb
+        wandb.init (
+            # Set the wandb project where this run will be logged
+            project = self.config.project_name,
+        
+            # Track hyperparameters and run metadata
+            config= {
+                'dataset': f'{axis_dic[self.config.axis]}s_43_56_396_{self.config.seed}_{self.config.fold}',
+                'fusion method': self.config.fusion_method,
+                'modality': self.modality, 
+                'number of classes': self.config.num_class,
+                'architecture': model_type,
+                'pretrained': pretrained,
+                'number of epochs': n_epochs,
+                'learning rate': learning_rate,
+                'lambda': self.config.lmbda,
+                'batch size': batch_size,
+                'seed': self.config.seed,
+                'number of gpus': self.config.n_gpu
+            }
+        )
+
+
+        train_losses = []
+        val_losses = []
+        train_accuracies = []
+        val_accuracies = []
+        train_mccs = []
+        val_mccs = []
+
+        # match model_type:
+        #     case 'AutoInt': 
+        #         lr_base = 1e-6
+        #         lr_max = 1e-5
+        #     case 'denseNet121':
+        #         lr_base = 1e-3
+        #         lr_max = 1e-2
+        #     case 'swin_b':
+        #         lr_base = 1e-3
+        #         lr_max = 1e-2
+
+        # # CyclicLR scheduler
+        # scheduler = CyclicLR(self.optimizer, base_lr=lr_base, max_lr=lr_max, step_size_up=3000, mode='triangular')
+
+        best_val_loss = float('inf')
+        patience_counter = 0  # initialize early stopping counter
+        # best_model_path = f'best_model_{self.config.fusion_method}_{self.modality}_{model_type}_{axis_dic[self.config.axis]}_43_56_396_seed_{self.config.seed}.pth' # BE CARFUL WHERE YOU SAVE THE BEST MODEL, YOU SHOULD UPLOAD WEIGHTS IN TEST FROM HERE!
+        best_model_path = f'best_model_{self.modality}_{self.config.fold}.pth'
+
+        # Training loop
+        for epoch in range(n_epochs):
+
+            self.model.train()
+            train_loss = 0.0
+            correct = 0
+            total = 0
+            labels_train_list = []
+            predicted_train_list = []
+
+            #for batch_idx, (inputs, labels) in enumerate(train_dataloader):
+            for inputs, labels in self.train_dataloader:
+                inputs, labels = inputs.to(self.device), labels.to(self.device)
+       
+                self.optimizer.zero_grad()
+                outputs= self.model(inputs)
+
+                if self.config.num_class == 2:
+                    labels = labels.float()
+                    outputs = torch.squeeze(outputs)  # Remove the extra dimension [batch_size, 1] -> [batch_size]
+                    predicted = torch.round(torch.sigmoid(outputs))  # for Binary classification
+
+                else:
+                    _, predicted = torch.max(outputs, 1)  # for Multi-class classification
+            
+                loss = self.criterion(outputs, labels)
+
+                loss.backward()
+                self.optimizer.step()
+
+                # # Step the learning rate scheduler
+                # scheduler.step()
+
+                train_loss += loss.item()
+
+                total += labels.size(0)
+                correct += (predicted == labels).sum().item()
+                labels_train_list.append(labels.cpu().detach().numpy())
+                predicted_train_list.append(predicted.cpu().detach().numpy())
+
+            ######################################## for the train/test
+            torch.save(self.model.state_dict(), best_model_path)
+
+    
+            train_loss /= len(self.train_dataloader)  # it is the average loss for each batch
+            train_accuracy = correct / total # total (number of instances in the dataloader) is correct, len(self.train_dataloader) is the number of batches in the dataloader        
+            train_mcc = matthews_corrcoef(np.concatenate(labels_train_list), np.concatenate(predicted_train_list))  # added for mcc
+
+            train_losses.append(train_loss)
+            train_accuracies.append(train_accuracy)
+            train_mccs.append(train_mcc)
+    
+            # Validation
+            self.model.eval()
+            val_loss = 0.0
+            correct = 0
+            total = 0
+            labels_val_list = []
+            predicted_val_list = []
+    
+            with torch.no_grad():
+                for inputs, labels in self.val_dataloader:
+                    inputs, labels = inputs.to(self.device), labels.to(self.device)
+
+                    
+                    outputs= self.model(inputs)
+
+                    if self.config.num_class == 2:
+                        labels = labels.float()
+                        outputs = torch.squeeze(outputs) # Remove the extra dimension [batch_size, 1] -> [batch_size]
+                        predicted = torch.round(torch.sigmoid(outputs))  # Binary classification
+                    else:
+                        _, predicted = torch.max(outputs, 1)  # Multi-class classification
+
+                    loss = self.criterion(outputs, labels)
+
+                    val_loss += loss.item()
+
+                    total += labels.size(0)
+                    correct += (predicted == labels).sum().item()
+                    labels_val_list.append(labels.cpu().detach().numpy())
+                    predicted_val_list.append(predicted.cpu().detach().numpy())
+            
+            val_loss /= len(self.val_dataloader)
+            val_accuracy = correct / total # why not: len(self.val_dataloader) 
+            val_mcc = matthews_corrcoef(np.concatenate(labels_val_list), np.concatenate(predicted_val_list))  # added for mcc
+
+            val_losses.append(val_loss)
+            val_accuracies.append(val_accuracy)
+            val_mccs.append(val_mcc)
+
+            
+            print(f'Epoch [{epoch+1}/{n_epochs}], '
+                f'Modality: {self.modality}, '
+                f'Train_Loss: {train_loss:.4f}, Train_Accuracy: {train_accuracy:.2%}, Train_MCC: {train_mcc:.4f}, '  
+                f'Val_Loss: {val_loss:.4f}, Val_Accuracy: {val_accuracy:.2%}, Val_MCC: {val_mcc:.4f}')
+
+            # # Optionally, print or log learning rate
+            # print(f"Epoch [{epoch+1}/{n_epochs}], Current Learning Rate: {scheduler.get_last_lr()[0]}")
+
+            # Log metrics to wandb
+            wandb.log({'Train Loss': train_loss, 'Val Loss': val_loss, 'Train Accuracy': train_accuracy, 'Val Accuracy': val_accuracy, 'Train MCC': train_mcc, 'Val MCC': val_mcc})
+              
+            # # Save the best model
+            # if val_loss < best_val_loss: # The criteria for choosing the best model should be aligned with the loss function - discuss it with Aonghus???
+            #     best_val_loss = val_loss
+            #     torch.save(self.model.state_dict(), best_model_path)
+            #     print(f"Best model saved with validation loss: {val_loss:.5f}")
+
+            ####################################################################### for the train/test
+            # # Early stopping logic
+            # if val_loss < best_val_loss - 1e-4: # a delta threshold to avoid stopping on tiny fluctuations  
+            #     best_val_loss = val_loss
+            #     patience_counter = 0  # reset counter if improvement
+            #     torch.save(self.model.state_dict(), best_model_path) 
+            #     print(f"Best model saved with validation loss: {val_loss:.5f}")
+
+            # else:
+            #     patience_counter += 1
+            #     print(f"No improvement in validation loss for {patience_counter} epoch(s)")
+                
+            #     if patience_counter >= self.early_stopping_patience:
+            #         print(f"Early stopping triggered at epoch {epoch+1}")
+            #         break

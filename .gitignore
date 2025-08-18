@@ -1,0 +1,6 @@
+*.json
+*/__pycache__/*
+__pycache__/*
+#experiment/*
+#*.ipynb
+.pt_tmp/*
