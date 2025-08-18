@@ -62,9 +62,9 @@ def init_classifier_head(layer):
     
 
 
-############################ End of Initialization functions ##########################
+###################################### End of Initialization functions ########################################
 
-############################### Definition for AutoInt #############################
+########################################## Definition for AutoInt #############################################
 
 class AutoIntModel(nn.Module):
     def __init__(self, config):
@@ -96,11 +96,7 @@ class AutoIntModel(nn.Module):
         #print(x)
         x_cat = x[:, 0].unsqueeze(1).long()     # sex, categorical
         x_cont = x[:, 1].unsqueeze(1).float()   # age age and the rest of continuous features, continuous  .squeeze(1)
-
-        # print("fused features shape is: ", x.shape)
-        # print("cat features shape is: ", x_cat.shape)
-        # print("cont features shape is: ", x_cont.shape)
-        
+       
         x_dict = {
             "categorical": x_cat,
             "continuous": x_cont
@@ -145,9 +141,34 @@ class AutoIntModel_intermediate(nn.Module):
         return x
 
 
-############################ End of Definition for AutoInt #########################
+######################################## End of Definition for AutoInt ####################################
 
-################################### MLP Models ########################################
+################################################# MLP Models ##############################################
+
+# Define MLP_intermediate Model          
+class MLP_intermediate(nn.Module):
+    def __init__(self, input_size, hidden_size):
+        super(MLP_intermediate, self).__init__()
+        self.fc1 = nn.Linear(input_size, hidden_size)
+        self.bn1 = nn.LayerNorm(hidden_size)
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(0.3)
+        
+        self.fc2 = nn.Linear(hidden_size, hidden_size // 2)
+        self.bn2 = nn.LayerNorm(hidden_size // 2)
+        
+    def forward(self, x):
+        x = self.fc1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.dropout(x)
+
+        x = self.fc2(x)
+        x = self.bn2(x)
+        x = self.relu(x)
+
+        return x
+    
 
 # Define MLP_1024_512_256_128 Model
 class MLP_1024_512_256_128(nn.Module):
@@ -197,9 +218,9 @@ class MLP_1024_512_256_128(nn.Module):
 
         return x
 
-###################################  End of MLP Models ########################################
+##############################################  End of MLP Models ########################################
 
-################################### Inter_1_concat Model #######################################
+############################################# Inter_1_concat Model #######################################
 
 # Define intermediate_1 fusion architecture
 class Inter_1_concat (nn.Module):
@@ -235,8 +256,7 @@ class Inter_1_concat (nn.Module):
                     initialization=("kaiming"),  # No additional layer in head, just a mapping layer to output_dim                     
                 )
 
-                # Initialize AutoInt model
-                # These parameters are the result of grid hyperparameter tuning on the whole data set
+                # Initialize AutoInt model with tuned parameters
                 model_config = AutoIntConfig(task="classification",  head="LinearHead", attn_dropouts=0.3, attn_embed_dim=4, batch_norm_continuous_input=True, embedding_dim=16, num_attn_blocks=1, num_heads=4)
                 model_config.continuous_dim = 1
                 model_config.categorical_dim = 1
@@ -273,7 +293,7 @@ class Inter_1_concat (nn.Module):
             nn.Linear(64, self.config.num_class - 1)
         )
 
-        # Initialize only classifier weights
+        # Initialize classifier weights
         init_weights(self.classifier, init_type="kaiming")
 
 
@@ -306,9 +326,9 @@ class Inter_1_concat (nn.Module):
 
         return out
     
-###################################### End of Inter_1_concat Model ##############################    
+############################################### End of Inter_1_concat Model ########################################    
 
-################################## Inter_2_concat Model #######################################
+################################################## Inter_2_concat Model ############################################
 
 # Define intermediate fusion architecture
 class Inter_2_concat (nn.Module):
@@ -344,8 +364,7 @@ class Inter_2_concat (nn.Module):
                     dropout=0.1,  # default
                     initialization=("kaiming"),  # No additional layer in head, just a mapping layer to output_dim                       
                 )
-                # Initialize AutoInt model
-                # model_config = AutoIntConfig(task="classification",  head="LinearHead", attn_dropouts=0.1, attn_embed_dim=32, batch_norm_continuous_input=False, embedding_dim=8, num_attn_blocks=1, num_heads=4)
+                # Initialize AutoInt model with tuned parameters
                 model_config = AutoIntConfig(task="classification",  head="LinearHead", attn_dropouts=0.3, attn_embed_dim=4, batch_norm_continuous_input=True, embedding_dim=16, num_attn_blocks=1, num_heads=4)
                 model_config.continuous_dim = 1
                 model_config.categorical_dim = 1
@@ -386,7 +405,7 @@ class Inter_2_concat (nn.Module):
             nn.Linear(64, self.config.num_class - 1)
         )
         
-        # Initialize only classifier weights
+        # Initialize classifier weights
         init_weights(self.classifier, init_type="kaiming")
 
 
@@ -394,7 +413,6 @@ class Inter_2_concat (nn.Module):
         features = []
 
         if 'T1_bias' in self.config.modalities or 'T1c_bias' in self.config.modalities or 'T2_bias' in self.config.modalities or 'FLAIR_bias' in self.config.modalities:
-            # print(modalities_input_dict.keys())
             mri_feat = self.mri_encoder(modalities_input_dict['MRI'])
             features.append(mri_feat)
 
@@ -407,9 +425,9 @@ class Inter_2_concat (nn.Module):
 
         return out
     
-################################### End of Inter_2_concat_densenet121 Model #######################################
+############################################## End of Inter_2_concat_densenet121 Model ###########################################
 
-############################################# Custom denseNet121 #################################################
+######################################################## Custom denseNet121 ######################################################
 
 # Define custom denseNet121 that changes the number of the channels of the input image and the head of the model (Identity or number of the classes of the classifier)
 class CustomDenseNet121(nn.Module):
@@ -465,10 +483,11 @@ class CustomDenseNet121(nn.Module):
             # Modify the final layer for 3 classes (DenseNet uses `classifier` for its final layer)
             if self.config.num_class == 2: 
                 model.classifier = nn.Linear(model.classifier.in_features, 1)
-                model.classifier.apply(init_classifier_head)
             else: 
-                model.classifier = nn.Linear(model.classifier.in_features, self.config.num_class)
-                model.classifier.apply(init_classifier_head)
+                model.classifier = nn.Linear(model.classifier.in_features, self.config.num_class)                
+            # Initialize weights for the head
+            model.classifier.apply(init_classifier_head)
+
         else:
             # Remove the classifier head
             model.classifier = nn.Identity()  
@@ -480,9 +499,9 @@ class CustomDenseNet121(nn.Module):
         return self.model(x)
 
 
-############################################ End of custom denseNet121 ##########################################
+############################################ End of custom denseNet121 ############################################
 
-############################################# Custom swin_b ##################################################
+################################################## Custom swin_b ##################################################
 
 # Define custom swin_b that changes the number of the channels of the input image and the head of the model (Identity or number of the classes of the classifier)
 class CustomSwin_b(nn.Module):
@@ -539,10 +558,11 @@ class CustomSwin_b(nn.Module):
             # Modify the final layer for 3 classes
             if self.config.num_class == 2:
                 model.head = nn.Linear(model.head.in_features, 1)
-                model.head.apply(init_classifier_head)
             else:
                 model.head = nn.Linear(model.head.in_features, self.config.num_class)
-                model.head.apply(init_classifier_head)
+            # Initialize weights for the head
+            model.classifier.apply(init_classifier_head)
+
         else: 
             # Remove the classifier head
             model.head = nn.Identity()
@@ -554,9 +574,9 @@ class CustomSwin_b(nn.Module):
         return self.model(x)
         
 
-####################################### End of custom swin_b #################################################
+################################################# End of custom swin_b #################################################
 
-##################################### Inter_2_bidirectional_crossattention ###################################
+########################################## Inter_2_bidirectional_crossattention ########################################
 
 class CrossAttention(nn.Module):
     '''This is basically a learned, multi-head, modality-to-modality information mixing layer.

@@ -814,7 +814,7 @@ class Model:
             nn_trainer.nn_train()
 
    
-    def _test_late(self, test_slice_df, training_time_spent )-> tuple[float, float, float, float, float]:
+    def _test_late(self, test_slice_df, training_time_spent)-> tuple[float, float, float, float, float]:
         '''This function is the testing function for the late fusion method
         
         Args:

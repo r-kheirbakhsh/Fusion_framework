@@ -954,7 +954,7 @@ def calculate_save_metrics_late(config, modality, y_labels, y_predicted, multi, 
 
 
 
-def calculate_save_metrics_intermediate_2(config, modality, y_labels, y_predicted, training_time_spent, test_loss=None) -> tuple[float, float, float, float, float]:   
+def calculate_save_metrics_intermediate_2(config, modality, y_labels, y_predicted, training_time_spent, test_loss=None)-> tuple[float, float, float, float, float]:   
     ''' This function takes two numpy array, one the labels and the other predicted value, and then calculates 
     the performance metrics and saves the reports on three files of .tex, .json, and .csv
 
@@ -980,6 +980,9 @@ def calculate_save_metrics_intermediate_2(config, modality, y_labels, y_predicte
     Returns:
         test_accuracy (_type:float_): the accuracy of the model
         MCC (_type:float_): the Matthews correlation coefficient of the model
+        f1_w (_type:float_): The weighted average of f1_score of the model on the test set
+        recall_w (_type:float_): The weighted average of recall of the model on the test set
+        precision_w (_type:float_): The weighted average of precision of the model on the test set
 
     '''
 
@@ -1068,7 +1071,7 @@ def calculate_save_metrics_intermediate_2(config, modality, y_labels, y_predicte
     # Convert the combined dictionary into a DataFrame
     df = pd.DataFrame([combined_data])  # Create a DataFrame with one row
 
-    csv_file_path = '/mnt/storage/reyhaneh/experiments/gl_classification/Modality_fusion_framework_experiments/intermediate_2_fusion_results_1.csv'
+    csv_file_path = '/mnt/storage/reyhaneh/experiments/gl_classification/Modality_fusion_framework_experiments/AICS25/intermediate_2_results.csv'
     try:
         csv_df = pd.read_csv(csv_file_path)
     except FileNotFoundError:
@@ -1084,7 +1087,7 @@ def calculate_save_metrics_intermediate_2(config, modality, y_labels, y_predicte
     return test_accuracy, MCC, f1_w, recall_w, precision_w  # return the metrics for the fused model to be used in the loop over folds
 
 
-def calculate_save_metrics_early_1(config, modality, y_labels, y_predicted, training_time_spent, uni, test_loss=None) -> tuple[float, float, float, float, float]:   
+def calculate_save_metrics_early_1(config, modality, y_labels, y_predicted, training_time_spent, uni, test_loss=None)-> tuple[float, float, float, float, float]:   
     ''' This function takes two numpy array, one the labels and the other predicted value, and then calculates 
     the performance metrics and saves the reports on three files of .tex, .json, and .csv
 
