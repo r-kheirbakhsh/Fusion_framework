@@ -51,12 +51,6 @@ def _transform (mri_modalities_dict, pretrained, do):
     # Sclae the images in the dictionary
     for item in mri_modalities_dict:
         image = mri_modalities_dict[item]
-        
-        # # find the max and min value of the array (image) for scaling
-        # min_value = np.min(image)
-        # max_value = np.max(image)
-        # # Scale the array (image)
-        # mri_modalities_dict[item] = (image - min_value) / (max_value - min_value)
 
         # Scale the MRI image to [0, 1] range
         mri_modalities_dict[item] = scale_mri_image(image, item) 
@@ -75,7 +69,7 @@ class UCSFslice_intermediate_1_fusion(Dataset):
     Args:
         Dataset: Parent torch dataset class
     '''
-    def __init__(self, metadata_df, config, do_transform) -> None:
+    def __init__(self, metadata_df, config, do_transform)-> None:
         ''' Sets the class variables
 
         Args:
@@ -94,7 +88,7 @@ class UCSFslice_intermediate_1_fusion(Dataset):
         self.transformation = do_transform
 
  
-    def __len__(self) -> int:
+    def __len__(self)-> int:
         '''Gets the length of the dataset
 
         Returns:
@@ -103,7 +97,7 @@ class UCSFslice_intermediate_1_fusion(Dataset):
         return len(self.metadata_df)
 
 
-    def __getitem__(self, idx) -> tuple[torch.Tensor, torch.Tensor]: 
+    def __getitem__(self, idx)-> tuple[torch.Tensor, torch.Tensor]: 
         '''_summary_
 
         Args:

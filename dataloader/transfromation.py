@@ -34,11 +34,6 @@ class CustomCompose(object):
                 M = cv2.getRotationMatrix2D(center, rotation_angle, 1.0)
                 modalities_dict[key] = cv2.warpAffine(modalities_dict[key], M, (w, h))  
 
-        # NOTE: If you use torchvision.transforms, note that ToTensor() converts a PIL.Image or numpy.ndarray of shape (H, W) into a tensor of shape [1, H, W] — but only if the input is correctly formatted.
-        # Alternatively, if you’re starting with a NumPy array and converting it manually:
-        # image = torch.tensor(image, dtype=torch.float32)  # [H, W]
-        # image = image.unsqueeze(0)  # [1, H, W]
-
         # Convert to tensor
         for key in modalities_dict.keys():
             modalities_dict[key] = torch.tensor(modalities_dict[key], dtype=torch.float32).unsqueeze(0)
@@ -107,14 +102,5 @@ def scale_mri_image(image, modality):
             min_value = 0
             max_value = 6355 # 6354.434775821865
  
-
-    # scalar = StandardScaler()
-    # image = scalar.fit_transform(image)
-
-    # # find the max and min value of the array (image) for scaling
-    # min_value = np.min(image)
-    # max_value = np.max(image)
-    # # Scale the array (image)
-    # image = (image - min_value) / (max_value - min_value)
 
     return image 

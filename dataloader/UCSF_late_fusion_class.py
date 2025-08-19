@@ -34,11 +34,6 @@ def _transform (image, pretrained, do, modality):
             v2.ToDtype(torch.float32, scale=True)     
     ])
 
-    # # find the max and min value of the array (image) for scaling
-    # min_value = np.min(image)
-    # max_value = np.max(image)
-    # # Scale the array (image)
-    # image = (image - min_value) / (max_value - min_value)
 
     # Scale the MRI image to [0, 1] range
     image = scale_mri_image(image, modality)
@@ -64,7 +59,7 @@ class UCSFslice_late_fusion(Dataset):
     Args:
         Dataset: Parent torch dataset class
     '''
-    def __init__(self, metadata_df, config, do_transform, modality) -> None:
+    def __init__(self, metadata_df, config, do_transform, modality)-> None:
         ''' Sets the class variables
 
         Args:
@@ -85,7 +80,7 @@ class UCSFslice_late_fusion(Dataset):
         self.transformation = do_transform
 
  
-    def __len__(self) -> int:
+    def __len__(self)-> int:
         '''Gets the length of the dataset
 
         Returns:
@@ -94,7 +89,7 @@ class UCSFslice_late_fusion(Dataset):
         return len(self.metadata_df)
 
 
-    def __getitem__(self, idx) -> tuple[torch.Tensor, torch.Tensor]: 
+    def __getitem__(self, idx)-> tuple[torch.Tensor, torch.Tensor]: 
         '''_summary_
 
         Args:

@@ -54,15 +54,6 @@ def _transform(mri_multichannel, pretrained, do, list_of_mri_modalities):
     # Scale each channel, and replace the scaled one in the image
     for channel in range(0, mri_multichannel.shape[2]):
 
-        # min_value = np.min(mri_multichannel[:,:,channel])
-        # max_value = np.max(mri_multichannel[:,:,channel])
-        # range_val = max_value - min_value
-        # # Scale the array
-        # if range_val > 0:
-        #     mri_multichannel[:,:,channel] = (mri_multichannel[:,:,channel] - min_value) / range_val
-        # else:
-        #     mri_multichannel[:,:,channel] = 0.0
-
         # scale the MRI image to [0, 1] range
         mri_multichannel[:,:,channel] = scale_mri_image(mri_multichannel[:,:,channel], list_of_mri_modalities[channel])
 
@@ -74,12 +65,13 @@ def _transform(mri_multichannel, pretrained, do, list_of_mri_modalities):
         return transform_2(mri_multichannel)
 
 
+
 class UCSFslice_intermediate_2_fusion(Dataset):
     '''UCSFslice_intermediate_2_fusion
     Args:
         Dataset: Parent torch dataset class
     '''
-    def __init__(self, metadata_df, config, do_transform) -> None:
+    def __init__(self, metadata_df, config, do_transform)-> None:
         ''' Sets the class variables
 
         Args:
@@ -98,7 +90,7 @@ class UCSFslice_intermediate_2_fusion(Dataset):
         self.transformation = do_transform
 
 
-    def __len__(self) -> int:
+    def __len__(self)-> int:
         '''Gets the length of the dataset
 
         Returns:
@@ -107,7 +99,7 @@ class UCSFslice_intermediate_2_fusion(Dataset):
         return len(self.metadata_df)
     
 
-    def __getitem__(self, idx) -> tuple[torch.Tensor, torch.Tensor]: 
+    def __getitem__(self, idx)-> tuple[torch.Tensor, torch.Tensor]: 
         '''_summary_
 
         Args:
