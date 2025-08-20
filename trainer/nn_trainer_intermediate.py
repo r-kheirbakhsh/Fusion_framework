@@ -35,10 +35,26 @@ class nn_Trainer_intermediate:
         self.early_stopping_patience = 10
 
 
+    def set_seed(self):
+        '''This function sets random seeds for reproducibility
+        
+        '''
+        # Set seeds for PyTorch to ensure consistency across runs
+        torch.manual_seed(self.config.seed)
+
+        # Using a GPU, make operations deterministic by setting:
+        torch.cuda.manual_seed(self.config.seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+
+
     def nn_train(self):
         '''this function contains full training logic for training and runs all the epochs
         
         '''
+        # Set the random seed for reproducibility
+        self.set_seed()
+
         n_epochs = self.config.n_epochs_fused
 
         axis_dic = {0: "Sagittal", 1: "Coronal", 2: "Axial"}  

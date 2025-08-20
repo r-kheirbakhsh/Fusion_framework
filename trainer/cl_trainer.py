@@ -40,6 +40,7 @@ class cl_Trainer:
             None
         
         '''
+
         # prepare X_train
         self.model.fit(self.X_train_np, self.y_train_np)
 

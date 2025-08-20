@@ -11,8 +11,8 @@ from utils import slice_to_patient_dataset, prepare_device, move_to_device, prep
                     get_dataloader_early_2_sampler, get_dataloader_early_2, \
                     get_dataloader_intermediate_2_sampler, get_dataloader_intermediate_2, \
                     calculate_save_metrics_early_1, calculate_save_metrics_early_2, \
-                    calculate_save_metrics_intermediate_1, calculate_save_metrics_intermediate_2, \
-                    calculate_save_metrics_late
+                    calculate_save_metrics_intermediate_2, calculate_save_metrics_late
+
 from fusion import late_fusion_function                   
 from trainer import nn_Trainer_early, nn_Trainer_intermediate, nn_Trainer_late, cl_Trainer
 from model import model_selection_early, model_selection_intermediate, model_selection_late
@@ -419,6 +419,9 @@ class Model:
 
         '''
 
+        # Set the random seed for reproducibility
+        self.set_seed()
+        
         # create dataloader with sampler
         train_dataset, train_dataloader = get_dataloader_early_2_sampler(metadata_df=train_slice_df, config=self.config, train_flag=1, batch_size=self.config.batch_size_fused)
         val_dataset, val_dataloader = get_dataloader_early_2(metadata_df=val_slice_df, config=self.config, train_flag=0, batch_size=self.config.batch_size_fused)
@@ -498,111 +501,6 @@ class Model:
      
 ################################################### End of codes for Early_2 Fusion ################################################ 
 
-#################################################### Code for Intermediate_1 Fusion ###############################################
-
-
-    def _train_intermediate_1(self, train_slice_df, val_slice_df)-> None:
-        '''This function handles the training process for the intermediate_1 fusion method.
-
-        Args:
-            train_slice_df (_type:Pandas DataFrame_): containing the training data in slice level
-            val_slice_df (_type:Pandas DataFrame_): containing the validation data in slice level
-
-        Returns:
-            None
-
-        '''                
-        # # create dataloaders
-        # train_dataset, train_dataloader = get_dataloader_intermediate_1(metadata_df=train_metadata_df, config=config, train_flag=1, batch_size=config.batch_size_fused)
-        # val_dataset, val_dataloader = get_dataloader_intermediate_1(metadata_df=val_metadata_df, config=config, train_flag=0, batch_size=config.batch_size_fused)
-
-        # create dataloader with sampler
-        train_dataset, train_dataloader = get_dataloader_intermediate_1_sampler(metadata_df=train_slice_df, config=self.config, train_flag=1, batch_size=self.config.batch_size_fused)
-        val_dataset, val_dataloader = get_dataloader_intermediate_1(metadata_df=val_slice_df, config=self.config, train_flag=0, batch_size=self.config.batch_size_fused)    
-
-
-        # select the backbone model to be trained
-        model = model_selection_intermediate(self.config)    
-
-        # prepare for (multi-device) GPU training
-        device, device_ids = prepare_device(self.config.n_gpu)
-        model = model.to(device)
-
-        # Define loss function
-        match self.config.num_class:
-            case 2: criterion = nn.BCEWithLogitsLoss()  # OR nn.BCELoss()   For binary classification
-            # case 2: criterion = lambda outputs, targets: sigmoid_focal_loss(outputs, targets, alpha=0.5, gamma=2, reduction="mean") # For binary classification considering the imbalance dataset
-            case 3: criterion = nn.CrossEntropyLoss()  # For multi-class classification
-                    
-        # # Define simple optimizer
-        # optimizer = optim.Adam(model.parameters(), lr=config.lr_fused, weight_decay=config.lmbda)
-        # scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5) # there should be a kind of strategy to change the learning rate, I have the cyclic in the trainer????
-        
-        # Define optimizer with different learning rates
-        optimizer = optim.AdamW([
-            {'params': model.mri_encoders.parameters(), 'lr': self.config.lr_mri, 'weight_decay': self.config.lmbda},
-            {'params': model.clinical_encoder.parameters(), 'lr': self.config.lr_cl, 'weight_decay': self.config.lmbda},
-            {'params': model.classifier.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda}
-            ])
-
-        if len(self.config.modalities) > 1:
-            modality = '+'.join(self.config.modalities)
-        else:
-            modality = self.config.modalities[0]
-
-        # Define the trainer
-        nn_trainer = nn_Trainer_intermediate(model, modality, criterion, optimizer,
-                            config = self.config,
-                            device = device,
-                            train_dataloader = train_dataloader,
-                            val_dataloader = val_dataloader,
-                            )
-
-        # Train the model
-        nn_trainer.nn_train()
-        return
-
-
-    def _test_intermediate_1(self, test_slice_df, modality, training_time_spent)-> tuple[float, float]:
-        '''This function is the testing function for the intermediate_1 fusion method
-        
-        Args:
-            test_slice_df (_type:Pandas DataFrame_): containing the test data in slice level
-            training_time_spent (_type:dict_): the time spent on the training 
-
-        Returns:
-            acc (_type:float_): the accuracy of the model on the test dataset
-            mcc (_type:float_): the Matthews correlation coefficient of the model on the test dataset
-
-        '''
-        # Set the random seed for reproducibility
-        self.set_seed()
-
-        # create dataloaders
-        test_dataset, test_dataloader = get_dataloader_intermediate_1(metadata_df=test_slice_df, config=self.config, train_flag=0, batch_size=1) # batch_size=1 for testing test batch size of 1
-
-        # select the backbone model
-        model = model_selection_intermediate(self.config) 
-
-        # Load the saved state_dict
-        try:
-            model.load_state_dict(torch.load(f'best_model_{self.config.fold}.pth' , weights_only = True))
-            # logging.info(f'loaded model: best_model_{config.fusion_method}_{modality}_{config.fused_model}_{axis_dic[config.axis]}_43_56_396_seed_{config.seed}.pth')
-        
-        except FileNotFoundError:
-            print("Model checkpoint not found. Ensure the path to 'best_model.pth' is correct.")
-            return
-
-        y_labels, y_outputs, y_predicted, test_loss = self._test_loop(model, test_dataloader)
-
-        # calculate the metrics for the model and save the results in three file of .text, .json, and .csv
-        acc, mcc = calculate_save_metrics_intermediate_1(self.config, modality, y_labels, y_predicted, training_time_spent, test_loss)
-
-        return acc, mcc
-
-
-########################################### End of code for Intermediate_1 Fusion ########################################
-
 ############################################### Code for Intermediate_2 Fusion ###########################################
     
 
@@ -640,7 +538,7 @@ class Model:
         # Define optimizer with different learning rates
         optimizer = optim.AdamW([
             {'params': model.mri_encoder.parameters(), 'lr': self.config.lr_mri, 'weight_decay': self.config.lmbda},
-            {'params': model.clinical_encoder.parameters(), 'lr': self.config.lr_cl, 'weight_decay': self.config.lmbda},
+            #{'params': model.clinical_encoder.parameters(), 'lr': self.config.lr_cl, 'weight_decay': self.config.lmbda},
             {'params': model.classifier.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda}
             ])
 
@@ -846,27 +744,31 @@ class Model:
             # calculate the metrics and save the results in three file of .text, .json, and .csv
             calculate_save_metrics_late(self.config, modality, pred_dic[f'label_{modality}'], pred_dic[f'predicted_{modality}'], multi, modalitiy_specific_training_time, test_loss)
 
-        # Late fusion of the predictions of models
-        y_predicted_fused = late_fusion_function(self.config, pred_dic)
 
         if len(self.config.modalities) > 1:
-            modality = '+'.join(self.config.modalities)
-            multi = 1
-            t_loss = -1
+                modality = '+'.join(self.config.modalities)
+                multi = 1
+                t_loss = -1
         else:
-            modality = self.config.modalities[0]
-            multi = 0
-            t_loss = test_loss
+                modality = self.config.modalities[0]
+                multi = 0
+                t_loss = test_loss
 
         y_labels = pred_dic[f'label_{self.config.modalities[0]}']
 
-        # calculate the metrics for the late fused model and save the results in three file of .text, .json, and .csv
-        acc, mcc, f1_w, recall_w, precision_w = calculate_save_metrics_late(self.config, modality, y_labels, y_predicted_fused, multi, training_time_spent, t_loss) # y_labels is the y_labels for the first modality in config.modalities list 
+        for fusion_m in ['majority_voting', 'probability_averaging']:
+
+            self.config.fused_model = fusion_m
+            # Late fusion of the predictions of models
+            y_predicted_fused = late_fusion_function(self.config, pred_dic)
+            
+            # calculate the metrics for the late fused model and save the results in three file of .text, .json, and .csv
+            acc, mcc, f1_w, recall_w, precision_w = calculate_save_metrics_late(self.config, modality, y_labels, y_predicted_fused, multi, training_time_spent, t_loss) # y_labels is the y_labels for the first modality in config.modalities list 
 
         return acc, mcc, f1_w, recall_w, precision_w
     
 
-    def _predict_with_modality_specific_model(self, test_slice_df, modality)-> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def _predict_with_modality_specific_model(self, test_slice_df, modality)-> tuple[np.ndarray, np.ndarray, np.ndarray, float]:
         ''' This function takes datafarme of test and predict the labels for the specific 'modality' 
         that fed as an argument.
 

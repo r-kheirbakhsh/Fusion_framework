@@ -1,8 +1,6 @@
 import torch
 import wandb
 import numpy as np
-from torchmetrics.classification import BinaryMatthewsCorrCoef, MulticlassMatthewsCorrCoef, BinaryAccuracy, MulticlassAccuracy
-from torch.optim.lr_scheduler import CyclicLR
 from sklearn.metrics import matthews_corrcoef
 
 
@@ -36,10 +34,26 @@ class nn_Trainer_late:
         self.early_stopping_patience = 10
 
 
+    def set_seed(self):
+        '''This function sets random seeds for reproducibility
+        
+        '''
+        # Set seeds for PyTorch to ensure consistency across runs
+        torch.manual_seed(self.config.seed)
+
+        # Using a GPU, make operations deterministic by setting:
+        torch.cuda.manual_seed(self.config.seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+
+
     def nn_train(self):
         '''this function contains full training logic for training and run all the epochs
         
         '''
+        # Set the random seed for reproducibility
+        self.set_seed()
+        
         if self.modality == 'Clinical':
             model_type = self.config.cl_model
             learning_rate = self.config.lr_cl
@@ -85,23 +99,9 @@ class nn_Trainer_late:
         train_mccs = []
         val_mccs = []
 
-        # match model_type:
-        #     case 'AutoInt': 
-        #         lr_base = 1e-6
-        #         lr_max = 1e-5
-        #     case 'denseNet121':
-        #         lr_base = 1e-3
-        #         lr_max = 1e-2
-        #     case 'swin_b':
-        #         lr_base = 1e-3
-        #         lr_max = 1e-2
-
-        # # CyclicLR scheduler
-        # scheduler = CyclicLR(self.optimizer, base_lr=lr_base, max_lr=lr_max, step_size_up=3000, mode='triangular')
 
         best_val_loss = float('inf')
         patience_counter = 0  # initialize early stopping counter
-        # best_model_path = f'best_model_{self.config.fusion_method}_{self.modality}_{model_type}_{axis_dic[self.config.axis]}_43_56_396_seed_{self.config.seed}.pth' # BE CARFUL WHERE YOU SAVE THE BEST MODEL, YOU SHOULD UPLOAD WEIGHTS IN TEST FROM HERE!
         best_model_path = f'best_model_{self.modality}_{self.config.fold}.pth'
 
         # Training loop
@@ -134,18 +134,12 @@ class nn_Trainer_late:
                 loss.backward()
                 self.optimizer.step()
 
-                # # Step the learning rate scheduler
-                # scheduler.step()
-
                 train_loss += loss.item()
 
                 total += labels.size(0)
                 correct += (predicted == labels).sum().item()
                 labels_train_list.append(labels.cpu().detach().numpy())
                 predicted_train_list.append(predicted.cpu().detach().numpy())
-
-            ######################################## for the train/test
-            torch.save(self.model.state_dict(), best_model_path)
 
     
             train_loss /= len(self.train_dataloader)  # it is the average loss for each batch
@@ -201,8 +195,6 @@ class nn_Trainer_late:
                 f'Train_Loss: {train_loss:.4f}, Train_Accuracy: {train_accuracy:.2%}, Train_MCC: {train_mcc:.4f}, '  
                 f'Val_Loss: {val_loss:.4f}, Val_Accuracy: {val_accuracy:.2%}, Val_MCC: {val_mcc:.4f}')
 
-            # # Optionally, print or log learning rate
-            # print(f"Epoch [{epoch+1}/{n_epochs}], Current Learning Rate: {scheduler.get_last_lr()[0]}")
 
             # Log metrics to wandb
             wandb.log({'Train Loss': train_loss, 'Val Loss': val_loss, 'Train Accuracy': train_accuracy, 'Val Accuracy': val_accuracy, 'Train MCC': train_mcc, 'Val MCC': val_mcc})
@@ -213,18 +205,18 @@ class nn_Trainer_late:
             #     torch.save(self.model.state_dict(), best_model_path)
             #     print(f"Best model saved with validation loss: {val_loss:.5f}")
 
-            ####################################################################### for the train/test
-            # # Early stopping logic
-            # if val_loss < best_val_loss - 1e-4: # a delta threshold to avoid stopping on tiny fluctuations  
-            #     best_val_loss = val_loss
-            #     patience_counter = 0  # reset counter if improvement
-            #     torch.save(self.model.state_dict(), best_model_path) 
-            #     print(f"Best model saved with validation loss: {val_loss:.5f}")
 
-            # else:
-            #     patience_counter += 1
-            #     print(f"No improvement in validation loss for {patience_counter} epoch(s)")
+            # Early stopping logic
+            if val_loss < best_val_loss - 1e-4: # a delta threshold to avoid stopping on tiny fluctuations  
+                best_val_loss = val_loss
+                patience_counter = 0  # reset counter if improvement
+                torch.save(self.model.state_dict(), best_model_path) 
+                print(f"Best model saved with validation loss: {val_loss:.5f}")
+
+            else:
+                patience_counter += 1
+                print(f"No improvement in validation loss for {patience_counter} epoch(s)")
                 
-            #     if patience_counter >= self.early_stopping_patience:
-            #         print(f"Early stopping triggered at epoch {epoch+1}")
-            #         break
+                if patience_counter >= self.early_stopping_patience:
+                    print(f"Early stopping triggered at epoch {epoch+1}")
+                    break

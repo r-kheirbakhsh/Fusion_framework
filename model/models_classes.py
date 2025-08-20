@@ -278,7 +278,7 @@ class Inter_1_concat (nn.Module):
             elif self.config.cl_model == 'MLP':
                 self.total_feature_size += 16  # MLP outputs 16-dim feature
 
-
+        # Define classifier
         self.classifier = nn.Sequential(
             nn.Linear(self.total_feature_size, 128),
             nn.LayerNorm(128),  # for small batch size (like 16) BatchNorm1d layer may make training inconsistant 
@@ -425,7 +425,7 @@ class Inter_2_concat (nn.Module):
 
         return out
     
-############################################## End of Inter_2_concat_densenet121 Model ###########################################
+#################################################### End of Inter_2_concat Model #################################################
 
 ######################################################## Custom denseNet121 ######################################################
 
@@ -576,7 +576,7 @@ class CustomSwin_b(nn.Module):
 
 ################################################# End of custom swin_b #################################################
 
-########################################## Inter_2_bidirectional_crossattention ########################################
+############################################## Inter_2_bi_crossattention ###############################################
 
 class CrossAttention(nn.Module):
     '''This is basically a learned, multi-head, modality-to-modality information mixing layer.
@@ -704,9 +704,9 @@ class Inter_2_bidirectional_crossattention(nn.Module):
         out = self.classifier(fused)
         return out
     
-####################################### End of  ###########################
+############################################ End of Inter_2_bi_crossattention ###############################
 
-####################################### Inter_2_bi_crossattn_selfattn Model ####################
+########################################### Inter_2_bi_crossattn_selfattn Model ##################################
 
 class Inter_2_bi_crossattn_selfattn(nn.Module):
     def __init__(self, config):
@@ -841,9 +841,9 @@ class Inter_2_bi_crossattn_selfattn(nn.Module):
 
         out = self.classifier(fused_transformed)
         return out
-####################################### end of Inter_2_bi_crossattn_selfattn ####################
+####################################### end of Inter_2_bi_crossattn_selfattn ######################################
 
-################################### Inter_1_selfattn_bi_crossattn Model #######################################
+####################################### Inter_1_selfattn_bi_crossattn Model #######################################
 
 class SelfAttentionBlock(nn.Module):
     def __init__(self, embed_dim, num_heads, ff_hidden_dim, dropout=0.1):
