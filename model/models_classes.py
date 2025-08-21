@@ -9,14 +9,29 @@ from pytorch_tabular.models.common.heads import blocks
 from pytorch_tabular.models.common.heads import LinearHeadConfig
 
 
+def set_seed(config):
+    '''This function sets random seeds for reproducibility
+    
+    '''
+    # Set seeds for PyTorch to ensure consistency across runs
+    torch.manual_seed(config.seed)
+
+    # Using a GPU, make operations deterministic by setting:
+    torch.cuda.manual_seed(config.seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
 ############################ Initialization functions #####################################
 
-def init_weights(model, init_type="kaiming"):
+def init_weights(config,model, init_type="kaiming"):
     '''
     Apply custom initialization to all layers of a model
     Supports: kaiming, xavier, normal
     Works on MLPs, CNNs, and Transformer/Attention blocks
     '''
+    # Set the seed
+    set_seed(config)
+
     for m in model.modules():
         if isinstance(m, nn.Linear):
             if init_type == "kaiming":
@@ -51,10 +66,13 @@ def init_weights(model, init_type="kaiming"):
 
 
 
-def init_classifier_head(layer):
+def init_classifier_head(config, layer):
     '''
     Apply Kaiming_unkform initialization of the classifier of a model
     '''
+    # Set the seed
+    set_seed(config)
+
     if isinstance(layer, nn.Linear):
         nn.init.kaiming_uniform_(layer.weight, nonlinearity="relu")
         if layer.bias is not None:
@@ -294,7 +312,7 @@ class Inter_1_concat (nn.Module):
         )
 
         # Initialize classifier weights
-        init_weights(self.classifier, init_type="kaiming")
+        init_weights(self.config, self.classifier, init_type="kaiming")
 
 
     def forward(self, modalities_input_dict):
@@ -406,7 +424,7 @@ class Inter_2_concat (nn.Module):
         )
         
         # Initialize classifier weights
-        init_weights(self.classifier, init_type="kaiming")
+        init_weights(self.config, self.classifier, init_type="kaiming")
 
 
     def forward(self, modalities_input_dict):
@@ -486,7 +504,8 @@ class CustomDenseNet121(nn.Module):
             else: 
                 model.classifier = nn.Linear(model.classifier.in_features, self.config.num_class)                
             # Initialize weights for the head
-            model.classifier.apply(init_classifier_head)
+            # model.classifier.apply(init_classifier_head)
+            init_classifier_head(self.config, model.classifier)
 
         else:
             # Remove the classifier head
@@ -561,7 +580,8 @@ class CustomSwin_b(nn.Module):
             else:
                 model.head = nn.Linear(model.head.in_features, self.config.num_class)
             # Initialize weights for the head
-            model.classifier.apply(init_classifier_head)
+            # model.classifier.apply(init_classifier_head)
+            init_classifier_head(self.config, model.head)
 
         else: 
             # Remove the classifier head
@@ -575,6 +595,127 @@ class CustomSwin_b(nn.Module):
         
 
 ################################################# End of custom swin_b #################################################
+
+################################################# Inter_2_concat_attn ##################################################
+
+# ---- Attention Block ----
+class ModalityAttention(nn.Module):
+    def __init__(self, input_dims, hidden_dim=128):
+        super(ModalityAttention, self).__init__()
+        # Project each modality into same hidden_dim space
+        self.projections = nn.ModuleList([
+            nn.Linear(in_dim, hidden_dim) for in_dim in input_dims
+        ])
+        # Shared attention scorer
+        self.attn = nn.Sequential(
+            nn.Linear(hidden_dim, 64),
+            nn.Tanh(),
+            nn.Linear(64, 1)  # scalar score per modality
+        )
+
+    def forward(self, feats):  
+        # feats = list of modality feature tensors, each (B, in_dim)
+        proj_feats = [proj(f) for proj, f in zip(self.projections, feats)]  
+        proj_feats = torch.stack(proj_feats, dim=1)  # (B, M, hidden_dim)
+
+        scores = self.attn(proj_feats)               # (B, M, 1)
+        attn_weights = torch.softmax(scores, dim=1)  # (B, M, 1)
+
+        fused = torch.sum(attn_weights * proj_feats, dim=1)  # (B, hidden_dim)
+        return fused, attn_weights
+
+
+
+class Inter_2_concat_attn(nn.Module):
+    def __init__(self, config):
+        super(Inter_2_concat_attn, self).__init__()
+        self.config = config
+        self.modalities = config.modalities
+
+        # ----- Encoders -----
+        self.encoders = {}
+        input_dims = []
+
+        # MRI encoder
+        if any(m in self.modalities for m in ['T1_bias','T1c_bias','T2_bias','FLAIR_bias']):
+            if self.config.mri_model == 'denseNet121':
+                self.mri_encoder = CustomDenseNet121(self.config, in_channels=len([m for m in self.modalities if "bias" in m]), with_head=0)
+            elif self.config.mri_model == 'swin_b':
+                self.mri_encoder = CustomSwin_b(self.config, in_channels=len([m for m in self.modalities if "bias" in m]), with_head=0)
+            else:
+                raise ValueError(f"Unknown MRI model type: {self.config.mri_model}")
+            input_dims.append(1024)  # DenseNet/Swin output size
+
+
+        # Clinical encoder
+        if 'Clinical' in self.modalities:
+            if self.config.cl_model == 'AutoInt':
+                head_config = LinearHeadConfig(
+                    layers="",
+                    dropout=0.1,  # default
+                    initialization=("kaiming"),  # No additional layer in head, just a mapping layer to output_dim                       
+                )
+                # Initialize AutoInt model with tuned parameters
+                model_config = AutoIntConfig(task="classification",  head="LinearHead", attn_dropouts=0.3, attn_embed_dim=4, batch_norm_continuous_input=True, embedding_dim=16, num_attn_blocks=1, num_heads=4)
+                model_config.continuous_dim = 1
+                model_config.categorical_dim = 1
+                model_config.categorical_cardinality = [2]
+                model_config.output_cardinality = [2]
+                model_config.output_dim = 1  # For binary classification
+                model_config.head_config = head_config.__dict__
+                self.clinical_encoder = AutoIntModel_intermediate(config=model_config)
+
+                input_dims.append(8)  # output dim of AutoInt
+
+            else:
+                raise ValueError(f"Unknown Clinical model type: {self.config.cl_model}")
+            
+
+        # ----- Attention Fusion -----
+        self.modality_attention = ModalityAttention(input_dims, hidden_dim=128)
+
+
+        # ----- Classifier -----
+        self.classifier = nn.Sequential(
+            nn.Linear(128, 128),
+            nn.LayerNorm(128),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+
+            nn.Linear(128, 64),
+            nn.LayerNorm(64),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+
+            nn.Linear(64, self.config.num_class - 1)
+        )
+
+        # Initialize classifier weights
+        init_weights(self.config, self.classifier, init_type="kaiming")
+
+
+    def forward(self, modalities_input_dict):
+        feats = []
+
+        # MRI feature
+        if any(m in self.modalities for m in ['T1_bias','T1c_bias','T2_bias','FLAIR_bias']):
+            mri_feat = self.mri_encoder(modalities_input_dict['MRI'])  # (B,1024)
+            feats.append(mri_feat)
+
+        # Clinical feature
+        if 'Clinical' in self.modalities:
+            clinical_feat = self.clinical_encoder(modalities_input_dict['Clinical'])  # (B,8)
+            feats.append(clinical_feat)
+
+        # Attention fusion
+        fused, attn_weights = self.modality_attention(feats)  # fused: (B,128), attn_weights: (B,M,1)
+
+        # Classify
+        out = self.classifier(fused)
+        return out, attn_weights
+
+
+############################################# End of Inter_2_concat_attn ###############################################
 
 ############################################## Inter_2_bi_crossattention ###############################################
 
