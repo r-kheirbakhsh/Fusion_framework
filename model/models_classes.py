@@ -354,9 +354,10 @@ class Inter_2_concat (nn.Module):
         super(Inter_2_concat, self).__init__()
         self.config = config
 
-        # Define DenseNet121 encoders for each MRI modality
-        if 'T1_bias' in self.config.modalities or 'T1c_bias' in self.config.modalities or 'T2_bias' in self.config.modalities or 'FLAIR_bias' in self.config.modalities:
-            
+        # Define encoders for each MRI modality
+        # if 'T1_bias' in self.config.modalities or 'T1c_bias' in self.config.modalities or 'T2_bias' in self.config.modalities or 'FLAIR_bias' in self.config.modalities:
+        if any(m in self.modalities for m in ['T1_bias','T1c_bias','T2_bias','FLAIR_bias']):
+
             # Calculate the number of the channel of the image (number of MRI modalities)
             if 'Clinical' in self.config.modalities:
                 num_mri_modalities = len(self.config.modalities) - 1  # Exclude Clinical
@@ -504,7 +505,6 @@ class CustomDenseNet121(nn.Module):
             else: 
                 model.classifier = nn.Linear(model.classifier.in_features, self.config.num_class)                
             # Initialize weights for the head
-            # model.classifier.apply(init_classifier_head)
             init_classifier_head(self.config, model.classifier)
 
         else:
@@ -580,7 +580,6 @@ class CustomSwin_b(nn.Module):
             else:
                 model.head = nn.Linear(model.head.in_features, self.config.num_class)
             # Initialize weights for the head
-            # model.classifier.apply(init_classifier_head)
             init_classifier_head(self.config, model.head)
 
         else: 
@@ -600,7 +599,7 @@ class CustomSwin_b(nn.Module):
 
 # ---- Attention Block ----
 class ModalityAttention(nn.Module):
-    def __init__(self, input_dims, hidden_dim=128):
+    def __init__(self, input_dims, hidden_dim=256):
         super(ModalityAttention, self).__init__()
         # Project each modality into same hidden_dim space
         self.projections = nn.ModuleList([
@@ -624,6 +623,37 @@ class ModalityAttention(nn.Module):
         fused = torch.sum(attn_weights * proj_feats, dim=1)  # (B, hidden_dim)
         return fused, attn_weights
 
+
+class GatedModalityAttention(nn.Module):
+    def __init__(self, input_dims, hidden_dim=256):
+        super(GatedModalityAttention, self).__init__()
+        # Project each modality into same hidden_dim space
+        self.projections = nn.ModuleList([
+            nn.Linear(in_dim, hidden_dim) for in_dim in input_dims
+        ])
+        # Gating network (independent sigmoid gates per modality)
+        self.gates = nn.Sequential(
+            nn.Linear(hidden_dim, 64),
+            nn.ReLU(),
+            nn.Linear(64, 1),
+            nn.Sigmoid()   # gate between 0 and 1
+        )
+
+    def forward(self, feats):
+        # feats = list of modality feature tensors, each (B, in_dim)
+        proj_feats = [proj(f) for proj, f in zip(self.projections, feats)]  
+        proj_feats = torch.stack(proj_feats, dim=1)  # (B, M, hidden_dim)
+
+        # Compute gates
+        gates = self.gates(proj_feats)   # (B, M, 1), each value in [0,1]
+
+        # Apply gates to modality embeddings
+        gated_feats = gates * proj_feats # (B, M, hidden_dim)
+
+        # Fuse (sum or mean) across modalities
+        fused = torch.sum(gated_feats, dim=1)  # (B, hidden_dim)
+
+        return fused, gates
 
 
 class Inter_2_concat_attn(nn.Module):
@@ -672,12 +702,12 @@ class Inter_2_concat_attn(nn.Module):
             
 
         # ----- Attention Fusion -----
-        self.modality_attention = ModalityAttention(input_dims, hidden_dim=128)
-
+        # self.modality_attention = ModalityAttention(input_dims, hidden_dim=256)
+        self.gated_modality_attention = GatedModalityAttention(input_dims, hidden_dim=256)
 
         # ----- Classifier -----
         self.classifier = nn.Sequential(
-            nn.Linear(128, 128),
+            nn.Linear(256, 128),
             nn.LayerNorm(128),
             nn.ReLU(),
             nn.Dropout(0.3),
@@ -708,11 +738,13 @@ class Inter_2_concat_attn(nn.Module):
             feats.append(clinical_feat)
 
         # Attention fusion
-        fused, attn_weights = self.modality_attention(feats)  # fused: (B,128), attn_weights: (B,M,1)
+        # fused, attn_weights = self.modality_attention(feats)  # fused: (B,128), attn_weights: (B,M,1)
+        fused, gates = self.gated_modality_attention(feats)
 
         # Classify
         out = self.classifier(fused)
-        return out, attn_weights
+        #return out, attn_weights
+        return out, gates
 
 
 ############################################# End of Inter_2_concat_attn ###############################################

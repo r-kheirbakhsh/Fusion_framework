@@ -142,7 +142,8 @@ class Model:
         correct = 0
         y_labels = []
         y_outputs = []  
-        y_predicted = [] 
+        y_predicted = []
+        all_weights = []
 
         with torch.no_grad():
             for inputs, labels in test_dataloader:
@@ -151,7 +152,11 @@ class Model:
                 inputs = move_to_device(inputs, device)
                 labels = move_to_device(labels, device)
                 
-                outputs = model(inputs)
+                if self.config.fused_model == 'Inter_2_concat_attn':
+                    outputs, attn_weights = model(inputs)
+                    all_weights.append(attn_weights.detach().cpu())
+                else:
+                    outputs = model(inputs)
 
                 if self.config.num_class == 2:
                     labels = labels.float()
@@ -182,9 +187,15 @@ class Model:
         y_outputs = np.array(y_outputs)
         y_predicted = np.array(y_predicted)
 
-        return y_labels, y_outputs, y_predicted, test_loss
+        if self.config.fused_model == 'Inter_2_concat_attn':
+            all_weights = torch.cat(all_weights, dim=0)
+            mean_weights = all_weights.mean(dim=0).squeeze()
+            print("Average modality importance:", mean_weights.numpy())
 
-       
+        return y_labels, y_outputs, y_predicted, test_loss
+    
+
+      
 ################################################ Code for Early_1 Fusion ################################################
 
 
@@ -538,7 +549,7 @@ class Model:
         # Define optimizer with different learning rates
         optimizer = optim.AdamW([
             {'params': model.mri_encoder.parameters(), 'lr': self.config.lr_mri, 'weight_decay': self.config.lmbda},
-            #{'params': model.clinical_encoder.parameters(), 'lr': self.config.lr_cl, 'weight_decay': self.config.lmbda},
+            {'params': model.clinical_encoder.parameters(), 'lr': self.config.lr_cl, 'weight_decay': self.config.lmbda},
             {'params': model.classifier.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda}
             ])
 
