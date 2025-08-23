@@ -3,7 +3,8 @@
 
 '''
 
-from model.models_classes import Inter_2_concat, Inter_2_concat_attn, Inter_2_bidirectional_crossattention, Inter_2_bi_crossattn_selfattn
+from model.models_classes import Inter_1_concat, Inter_2_concat, Inter_2_concat_attn, \
+                                 Inter_2_bidirectional_crossattention, Inter_2_bi_crossattn_selfattn
                                     
 
 
@@ -19,8 +20,11 @@ def model_selection_intermediate(config):
         model (_type:class_): the class of model to be trained 
 
     '''
-    
-    if config.fused_model == 'Inter_2_concat':
+
+    if config.fused_model == 'Inter_1_concat':
+        model = Inter_1_concat(config=config)  
+
+    elif config.fused_model == 'Inter_2_concat':
         model = Inter_2_concat(config=config)
 
     elif config.fused_model == 'Inter_2_concat_attn':

@@ -953,6 +953,138 @@ def calculate_save_metrics_late(config, modality, y_labels, y_predicted, multi, 
         return test_accuracy, MCC, f1_w, recall_w, precision_w  # return the accuracy and MCC for the fused model to be used in the loop over folds
 
 
+def calculate_save_metrics_intermediate_1(config, modality, y_labels, y_predicted, training_time_spent, test_loss=None)->tuple[float, float]:   
+    ''' This function takes two numpy array, one the labels and the other predicted value, and then calculates 
+    the performance metrics and saves the reports on three files of .tex, .json, and .csv
+
+    Args:
+        config (_type:Config_): the configeration of the problem, the ones used in this class:
+            config.fused_model (_type:str_): the name of intermediate fusion model
+            config.mri_model (_type:str_): the name of model for MRI modality
+            config.cl_model (_type:str_): the name of model for Clinical modality
+            config.fusion_method (_type:str_): the fusion method used in the model
+            config.axis (_type:int_): the axis of the data, 0 for Sagittal, 1 for Coronal, and 2 for Axial
+            config.batch_size_fused (_type:int_): batch size for the fused model
+            config.n_epochs_fused (_type:int_): number of epochs for the fused model
+            config.lr_fused (_type:str_): learning rate for the fused model
+            config.scale_clinical_modality (_type:bool_): whether to scale the clinical modality or not
+            config.seed (_type:str_): for reproducability
+            config.num_class (_type:int_): the number of class we have 2 or >2 
+        modality(_type:str_): the modality(ies) used in the model
+        y_labels (_type:np.array_): the labels
+        y_predicted (_type:np.array_): the predicted values for y_labels
+        training_time_spent (_type:float_): the time spent for training the model
+        test_loss (_type:float_): the test loss of the intermediate fusion model 
+
+    Returns:
+        test_accuracy (_type:float_): the accuracy of the model
+        MCC (_type:float_): the Matthews correlation coefficient of the model
+        f1_w (_type:float_): The weighted average of f1_score of the model on the test set
+        recall_w (_type:float_): The weighted average of recall of the model on the test set
+        precision_w (_type:float_): The weighted average of precision of the model on the test set
+
+    '''
+
+    # Compute classification metrics
+    conf_matrix = confusion_matrix(y_labels, y_predicted).tolist()  # Convert to list for JSON serialization
+    match config.num_class:
+        case 3: 
+            report = classification_report(y_labels, y_predicted, target_names=['Grade 2', 'Grade 3', 'Grade 4'], output_dict=True)
+        case 2: 
+            report = classification_report(y_labels, y_predicted, target_names=['Grade 4', 'Grade 2&3'], output_dict=True)
+
+    # comput MCC
+    MCC = matthews_corrcoef(y_labels, y_predicted)
+    test_accuracy = accuracy_score(y_labels, y_predicted)
+    f1_w = report['weighted avg']['f1-score']
+    recall_w = report['weighted avg']['recall']
+    precision_w = report['weighted avg']['precision']
+
+    axis_dic = {0: "Sagittal", 1: "Coronal", 2: "Axial"}
+    # Save metrics to a text file
+    with open(f'fold_{config.fold}_metrics.txt', 'w') as f:
+        f.write(f'Dataset Spec: {axis_dic[config.axis]}_43_56_396_seed_{config.seed}_{config.fold}\n')
+        f.write(f'Fusion method: {config.fusion_method}\n')
+        f.write(f'Modality: {modality}\n')
+        f.write(f'Model: {config.fused_model}\n')
+        f.write(f'MRI backbone: {config.mri_model}\n')
+        f.write(f'Clinical backbone: {config.cl_model}\n')
+        f.write(f'Batch size: {config.batch_size_fused}\n')
+        f.write(f'Number of epochs: {config.n_epochs_fused}\n')
+        f.write(f'Time spent for training: {training_time_spent:.2f} minutes\n\n')
+        f.write(f'Test Loss: {test_loss:.4f}\n')
+        f.write(f'Test Accuracy: {test_accuracy:.4f}\n')
+        f.write(f'Test MCC: {MCC:.4f}\n\n')
+        f.write('Confusion Matrix:\n')
+        f.write(f'{conf_matrix}\n\n')
+        f.write('Classification Report:\n')
+        f.write(classification_report(y_labels, y_predicted, target_names=['Grade 4', 'Grade 2&3'], output_dict=False))
+
+    # Save metrics and configuration to a JSON file
+    results = {
+        "config": {
+            "dataset": f'{axis_dic[config.axis]}_43_56_396_seed_{config.seed}_{config.fold}',
+            "fusion_method": config.fusion_method,
+            "modality": modality,
+            "model": config.fused_model,
+            "mri_backbone": config.mri_model,
+            "clinical_backbone": config.cl_model,
+            "batch_size": config.batch_size_fused,
+            "num_epochs": config.n_epochs_fused, 
+            "training_time": training_time_spent,      
+            "learning_rate": config.lr_fused, 
+            "clinical_scaling": config.scale_clinical_modality
+        },
+        "metrics": {
+            "test_loss": test_loss,
+            "test_accuracy": test_accuracy, 
+            "test_MCC": MCC,
+            "confusion_matrix": conf_matrix,
+            "grade 2&3 precision": report['Grade 2&3']['precision'],
+            "grade 2&3 recall": report['Grade 2&3']['recall'],
+            "grade 2&3 f1-score": report['Grade 2&3']['f1-score'],
+            "grade 2&3 support": report['Grade 2&3']['support'],
+            "grade 4 precision": report['Grade 4']['precision'],
+            "grade 4 recall": report['Grade 4']['recall'],
+            "grade 4 f1-score": report['Grade 4']['f1-score'],
+            "grade 4 support": report['Grade 4']['support'],
+            "precision-macro avg": report['macro avg']['precision'],
+            "recall-macro avg": report['macro avg']['recall'],
+            "f1-score-macro avg": report['macro avg']['f1-score'],
+            "support-macro avg": report['macro avg']['support'],
+            "precision-weighted avg": report['weighted avg']['precision'],
+            "recall-weighted avg": report['weighted avg']['recall'],
+            "f1-score-weighted avg": report['weighted avg']['f1-score'],
+            "support-weighted avg": report['weighted avg']['support']    
+        }
+    }
+
+    with open(f'fold_{config.fold}_metrics.json', 'w') as json_file: 
+        json.dump(results, json_file, indent=4)
+
+    # Save the configs and metrics to a csv file
+    # Flatten nested structures and convert to a DataFrame
+    # Combine 'config' and 'metrics' into a single dictionary for CSV export
+    combined_data = {**results['config'], **results['metrics']}
+
+    # Convert the combined dictionary into a DataFrame
+    df = pd.DataFrame([combined_data])  # Create a DataFrame with one row
+
+    csv_file_path = '/mnt/storage/reyhaneh/experiments/gl_classification/Modality_fusion_framework_experiments/AICS25/intermediate_1_results.csv'
+    try:
+        csv_df = pd.read_csv(csv_file_path)
+    except FileNotFoundError:
+        # Create a new DataFrame if the CSV does not exist
+        csv_df = pd.DataFrame()
+
+    # Append the new JSON data
+    updated_csv_df = pd.concat([csv_df, df], ignore_index=True)
+
+    # Save the updated CSV
+    updated_csv_df.to_csv(csv_file_path, index=False)
+
+    return test_accuracy, MCC, f1_w, recall_w, precision_w  # return the accuracy and MCC for the fused model to be used in the loop over folds
+
 
 def calculate_save_metrics_intermediate_2(config, modality, y_labels, y_predicted, training_time_spent, test_loss=None)-> tuple[float, float, float, float, float]:   
     ''' This function takes two numpy array, one the labels and the other predicted value, and then calculates 

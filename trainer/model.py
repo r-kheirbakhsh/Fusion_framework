@@ -11,7 +11,8 @@ from utils import slice_to_patient_dataset, prepare_device, move_to_device, prep
                     get_dataloader_early_2_sampler, get_dataloader_early_2, \
                     get_dataloader_intermediate_2_sampler, get_dataloader_intermediate_2, \
                     calculate_save_metrics_early_1, calculate_save_metrics_early_2, \
-                    calculate_save_metrics_intermediate_2, calculate_save_metrics_late
+                    calculate_save_metrics_intermediate_1, calculate_save_metrics_intermediate_2, \
+                    calculate_save_metrics_late
 
 from fusion import late_fusion_function                   
 from trainer import nn_Trainer_early, nn_Trainer_intermediate, nn_Trainer_late, cl_Trainer
@@ -60,6 +61,9 @@ class Model:
             case 'early_2_fusion':
                 self._train_early_2(train_slice_df, val_slice_df)
 
+            case 'intermediate_1_fusion':
+                self._train_intermediate_1(train_slice_df, val_slice_df)
+
             case 'intermediate_2_fusion':
                 self._train_intermediate_2(train_slice_df, val_slice_df)
 
@@ -95,6 +99,9 @@ class Model:
 
             case 'early_2_fusion':
                 acc, mcc, f1_w, recall_w, precision_w = self._test_early_2(test_slice_df, modality, training_time_spent)
+
+            case 'intermediate_1_fusion':
+                acc, mcc, f1_w, recall_w, precision_w = self._test_intermediate_1(test_slice_df, modality, training_time_spent)
 
             case 'intermediate_2_fusion':
                 acc, mcc, f1_w, recall_w, precision_w = self._test_intermediate_2(test_slice_df, modality, training_time_spent)
@@ -510,7 +517,106 @@ class Model:
         return acc, mcc, f1_w, recall_w, precision_w 
     
      
-################################################### End of codes for Early_2 Fusion ################################################ 
+################################################### End of code for Early_2 Fusion ################################################ 
+
+################################################### Code for Intermediate_1 Fusion ################################################
+
+    def _train_intermediate_1(self, train_slice_df, val_slice_df)-> None:
+        '''This function handles the training process for the intermediate_1 fusion method.
+
+        Args:
+            train_slice_df (_type:Pandas DataFrame_): containing the training data in slice level
+            val_slice_df (_type:Pandas DataFrame_): containing the validation data in slice level
+
+        Returns:
+            None
+
+        '''                
+
+        # create dataloader with sampler
+        train_dataset, train_dataloader = get_dataloader_intermediate_1_sampler(metadata_df=train_slice_df, config=self.config, train_flag=1, batch_size=self.config.batch_size_fused)
+        val_dataset, val_dataloader = get_dataloader_intermediate_1(metadata_df=val_slice_df, config=self.config, train_flag=0, batch_size=self.config.batch_size_fused)    
+
+
+        # select the backbone model to be trained
+        model = model_selection_intermediate(self.config)    
+
+        # prepare for (multi-device) GPU training
+        device, device_ids = prepare_device(self.config.n_gpu)
+        model = model.to(device)
+
+        # Define loss function
+        match self.config.num_class:
+            case 2: criterion = nn.BCEWithLogitsLoss()  # OR nn.BCELoss()   For binary classification
+            case 3: criterion = nn.CrossEntropyLoss()  # For multi-class classification
+                    
+       
+        # Define optimizer with different learning rates
+        optimizer = optim.AdamW([
+            {'params': model.mri_encoders.parameters(), 'lr': self.config.lr_mri, 'weight_decay': self.config.lmbda},
+            #{'params': model.clinical_encoder.parameters(), 'lr': self.config.lr_cl, 'weight_decay': self.config.lmbda},
+            {'params': model.classifier.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda}
+            ])
+
+        if len(self.config.modalities) > 1:
+            modality = '+'.join(self.config.modalities)
+        else:
+            modality = self.config.modalities[0]
+
+        # Define the trainer
+        nn_trainer = nn_Trainer_intermediate(model, modality, criterion, optimizer,
+                            config = self.config,
+                            device = device,
+                            train_dataloader = train_dataloader,
+                            val_dataloader = val_dataloader,
+                            )
+
+        # Train the model
+        nn_trainer.nn_train()
+        return
+
+
+    def _test_intermediate_1(self, test_slice_df, modality, training_time_spent)-> tuple[float, float, float, float, float]:
+        '''This function is the testing function for the intermediate_1 fusion method
+        
+        Args:
+            test_slice_df (_type:Pandas DataFrame_): containing the test data in slice level
+            training_time_spent (_type:dict_): the time spent on the training 
+
+        Returns:
+            acc (_type:float_): the accuracy of the model on the test dataset
+            mcc (_type:float_): the Matthews correlation coefficient of the model on the test dataset
+            f1_w (_type:float_): The weighted average of f1_score of the model on the test set
+            recall_w (_type:float_): The weighted average of recall of the model on the test set
+            precision_w (_type:float_): The weighted average of precision of the model on the test set
+
+        '''
+        # Set the random seed for reproducibility
+        self.set_seed()
+
+        # create dataloaders
+        test_dataset, test_dataloader = get_dataloader_intermediate_1(metadata_df=test_slice_df, config=self.config, train_flag=0, batch_size=1) # batch_size=1 for testing test batch size of 1
+
+        # select the backbone model
+        model = model_selection_intermediate(self.config) 
+
+        # Load the saved state_dict
+        try:
+            model.load_state_dict(torch.load(f'best_model_{self.config.fold}.pth' , weights_only = True))
+            # logging.info(f'loaded model: best_model_{config.fusion_method}_{modality}_{config.fused_model}_{axis_dic[config.axis]}_43_56_396_seed_{config.seed}.pth')
+        
+        except FileNotFoundError:
+            print("Model checkpoint not found. Ensure the path to 'best_model.pth' is correct.")
+            return
+
+        y_labels, y_outputs, y_predicted, test_loss = self._test_loop(model, test_dataloader)
+
+        # calculate the metrics for the model and save the results in three file of .text, .json, and .csv
+        acc, mcc, f1_w, recall_w, precision_w = calculate_save_metrics_intermediate_1(self.config, modality, y_labels, y_predicted, training_time_spent, test_loss)
+
+        return acc, mcc, f1_w, recall_w, precision_w
+
+################################# End of code for Intermediate_1 Fusion ###############################
 
 ############################################### Code for Intermediate_2 Fusion ###########################################
     
