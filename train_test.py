@@ -27,7 +27,7 @@ def main(config):
     global_time, global_acc, global_mcc, global_f1_weighted_avg, global_recall_weighted_avg, global_precision_weighted_avg = [], [], [], [], [], []
     # Loop through each fold
     for fold, (train_index, test_index) in enumerate(skf.split(dataset_patient_df, dataset_patient_df['WHO_grade'])):
-
+        #if fold >= 1:
         # Update the fold number in the config
         config.fold = fold  
         print(f'Fold {fold}/{config.num_folds-1} in progress...')

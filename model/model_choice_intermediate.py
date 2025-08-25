@@ -3,10 +3,9 @@
 
 '''
 
-from model.models_classes import Inter_1_concat, Inter_2_concat, Inter_2_concat_attn, \
+from model.models_classes import Inter_1_concat, Inter_1_concat_attn, Inter_2_concat, Inter_2_concat_attn, \
                                  Inter_2_bidirectional_crossattention, Inter_2_bi_crossattn_selfattn
                                     
-
 
 def model_selection_intermediate(config): 
     ''' This function takes the model_type and the number of classes and defines the model
@@ -22,7 +21,10 @@ def model_selection_intermediate(config):
     '''
 
     if config.fused_model == 'Inter_1_concat':
-        model = Inter_1_concat(config=config)  
+        model = Inter_1_concat(config=config)
+
+    elif config.fused_model == 'Inter_1_concat_attn':
+        model = Inter_1_concat_attn(config=config)
 
     elif config.fused_model == 'Inter_2_concat':
         model = Inter_2_concat(config=config)

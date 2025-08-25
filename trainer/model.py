@@ -128,6 +128,7 @@ class Model:
             y_outputs (_type:numpy.ndarray_): the outputs of the model on the test dataset
             y_predicted (_type:numpy.ndarray_): the predicted labels of the model on the test dataset
             test_loss (_type:float_): the average loss of the model on the test dataset
+            all_weights (_type:numpy.ndarray_): the attention weights of the model on the test dataset (only for attention-based models)
 
         '''
         # Set the random seed for reproducibility
@@ -159,7 +160,7 @@ class Model:
                 inputs = move_to_device(inputs, device)
                 labels = move_to_device(labels, device)
                 
-                if self.config.fused_model == 'Inter_2_concat_attn':
+                if self.config.fused_model in ['Inter_2_concat_attn', 'Inter_1_concat_attn']:
                     outputs, attn_weights = model(inputs)
                     all_weights.append(attn_weights.detach().cpu())
                 else:
@@ -194,15 +195,16 @@ class Model:
         y_outputs = np.array(y_outputs)
         y_predicted = np.array(y_predicted)
 
-        if self.config.fused_model == 'Inter_2_concat_attn':
+        if self.config.fused_model in ['Inter_2_concat_attn', 'Inter_1_concat_attn']:
             all_weights = torch.cat(all_weights, dim=0)
             mean_weights = all_weights.mean(dim=0).squeeze()
             print("Average modality importance:", mean_weights.numpy())
+            return y_labels, y_outputs, y_predicted, test_loss, all_weights
+        
+        else:
+            return y_labels, y_outputs, y_predicted, test_loss
 
-        return y_labels, y_outputs, y_predicted, test_loss
-    
 
-      
 ################################################ Code for Early_1 Fusion ################################################
 
 
@@ -554,7 +556,7 @@ class Model:
         # Define optimizer with different learning rates
         optimizer = optim.AdamW([
             {'params': model.mri_encoders.parameters(), 'lr': self.config.lr_mri, 'weight_decay': self.config.lmbda},
-            #{'params': model.clinical_encoder.parameters(), 'lr': self.config.lr_cl, 'weight_decay': self.config.lmbda},
+            {'params': model.clinical_encoder.parameters(), 'lr': self.config.lr_cl, 'weight_decay': self.config.lmbda},
             {'params': model.classifier.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda}
             ])
 
@@ -609,14 +611,18 @@ class Model:
             print("Model checkpoint not found. Ensure the path to 'best_model.pth' is correct.")
             return
 
-        y_labels, y_outputs, y_predicted, test_loss = self._test_loop(model, test_dataloader)
+        if self.config.fused_model in ['Inter_1_concat_attn']:
+            y_labels, y_outputs, y_predicted, test_loss, all_weights = self._test_loop(model, test_dataloader)
+        else:
+            y_labels, y_outputs, y_predicted, test_loss = self._test_loop(model, test_dataloader)
 
         # calculate the metrics for the model and save the results in three file of .text, .json, and .csv
         acc, mcc, f1_w, recall_w, precision_w = calculate_save_metrics_intermediate_1(self.config, modality, y_labels, y_predicted, training_time_spent, test_loss)
 
         return acc, mcc, f1_w, recall_w, precision_w
+    
 
-################################# End of code for Intermediate_1 Fusion ###############################
+############################################## End of code for Intermediate_1 Fusion #####################################
 
 ############################################### Code for Intermediate_2 Fusion ###########################################
     
@@ -708,7 +714,10 @@ class Model:
             print("Model checkpoint not found. Ensure the path to 'best_model.pth' is correct.")
             return
 
-        y_labels, y_outputs, y_predicted, test_loss = self._test_loop(model, test_dataloader) 
+        if self.config.fused_model in ['Inter_2_concat_attn']:
+            y_labels, y_outputs, y_predicted, test_loss, all_weights = self._test_loop(model, test_dataloader)
+        else:
+            y_labels, y_outputs, y_predicted, test_loss = self._test_loop(model, test_dataloader)
 
         # calculate the metrics for the model and save the results in three file of .text, .json, and .csv
         acc, mcc, f1_w, recall_w, precision_w  = calculate_save_metrics_intermediate_2(self.config, modality, y_labels, y_predicted, training_time_spent, test_loss)
