@@ -1141,17 +1141,17 @@ def Inter_2_calculate_avg_attn_weights(y_labels, y_predicted, all_weights)-> tup
     Clinical_contribution_label_1_avg = df[df['True_Label'] == 1]['Attention_Weight_Clinical'].mean()
     modality_cont_label_1_avg = np.array([MRI_contribution_label_1_avg, Clinical_contribution_label_1_avg])
 
-    # Calculate mean attention weights for the correct predicted label 0
+    # Calculate mean attention weights for the correctly predicted label 0 (grade 4)
     MRI_contribution_label_0_correct_avg = df[df['True_Label'] == 0 & df['Predicted'] == 0]['Attention_Weight_MRI'].mean()
     Clinical_contribution_label_0_correct_avg = df[df['True_Label'] == 0 & df['Predicted'] == 0]['Attention_Weight_Clinical'].mean()
     modality_cont_label_0_correct_avg = np.array([MRI_contribution_label_0_correct_avg, Clinical_contribution_label_0_correct_avg])
 
-    # Calculate mean attention weights for the correct predicted label 1
+    # Calculate mean attention weights for the correctly predicted label 1 (grade 2&3)
     MRI_contribution_label_1_correct_avg = df[df['True_Label'] == 1 & df['Predicted'] == 1]['Attention_Weight_MRI'].mean()
     Clinical_contribution_label_1_correct_avg = df[df['True_Label'] == 1 & df['Predicted'] == 1]['Attention_Weight_Clinical'].mean()
     modality_cont_label_1_correct_avg = np.array([MRI_contribution_label_1_correct_avg, Clinical_contribution_label_1_correct_avg])
 
-    # Calculate mean attention weights for the correct predicted samples
+    # Calculate mean attention weights for the correctly predicted samples
     MRI_contribution_correct_avg = df[(df['True_Label'] == 1 & df['Predicted'] == 1) | (df['True_Label'] == 0 & df['Predicted'] == 0)]['Attention_Weight_MRI'].mean()
     Clinical_contribution_correct_avg = df[(df['True_Label'] == 1 & df['Predicted'] == 1) | (df['True_Label'] == 0 & df['Predicted'] == 0)]['Attention_Weight_Clinical'].mean()
     modality_cont_correct_avg = np.array([MRI_contribution_correct_avg, Clinical_contribution_correct_avg])
@@ -1210,14 +1210,16 @@ def calculate_save_metrics_intermediate_2(config, modality, y_labels, y_predicte
 
     # Calculate avg attention weights
     if all_weights is not None:
-        modality_cont_avg = Inter_2_calculate_avg_attn_weights(y_labels, y_predicted, all_weights)
-        modality_cont_label_0_avg = None # temp
-        modality_cont_label_1_avg = None # temp
+        modality_cont_avg, modality_cont_label_0_avg, modality_cont_label_1_avg, \
+            modality_cont_label_0_correct_avg, modality_cont_label_1_correct_avg, \
+            modality_cont_correct_avg = Inter_2_calculate_avg_attn_weights(y_labels, y_predicted, all_weights)
     else:
-
         modality_cont_avg = None
         modality_cont_label_0_avg = None
         modality_cont_label_1_avg = None
+        modality_cont_label_0_correct_avg = None
+        modality_cont_label_1_correct_avg = None
+        modality_cont_correct_avg = None
 
     axis_dic = {0: "Sagittal", 1: "Coronal", 2: "Axial"}
     # Save metrics to a text file
@@ -1236,7 +1238,10 @@ def calculate_save_metrics_intermediate_2(config, modality, y_labels, y_predicte
         f.write(f'Test MCC: {MCC:.4f}\n\n')
         f.write(f'Modality Contribution Avg: {modality_cont_avg}\n')
         f.write(f'Modality Contribution Label 0 Avg: {modality_cont_label_0_avg}\n')
-        f.write(f'Modality Contribution Label 1 Avg: {modality_cont_label_1_avg}\n\n')
+        f.write(f'Modality Contribution Label 1 Avg: {modality_cont_label_1_avg}\n')
+        f.write(f'Modality Contribution Label 0 Correct Avg: {modality_cont_label_0_correct_avg}\n')
+        f.write(f'Modality Contribution Label 1 Correct Avg: {modality_cont_label_1_correct_avg}\n')
+        f.write(f'Modality Contribution Correct Avg: {modality_cont_correct_avg}\n\n')
         f.write('Confusion Matrix:\n')
         f.write(f'{conf_matrix}\n\n')
         f.write('Classification Report:\n')
