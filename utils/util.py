@@ -1102,7 +1102,7 @@ def calculate_save_metrics_intermediate_1(config, modality, y_labels, y_predicte
 
 
 
-def Inter_2_calculate_avg_attn_weights(y_labels, y_predicted, all_weights)-> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def Inter_2_calculate_avg_attn_weights(y_labels, y_predicted, all_weights)-> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     ''' This function takes a list of attention weights arrays and calculates the average attention weights across all arrays
 
     Args:
@@ -1114,6 +1114,9 @@ def Inter_2_calculate_avg_attn_weights(y_labels, y_predicted, all_weights)-> tup
         modality_cont_avg (_type:np.ndarray_): A NumPy array containing the average attention weights
         modality_cont_label_0_avg (_type:np.ndarray_): A NumPy array containing the average attention weights for label 0 (grade 4)
         modality_cont_label_1_avg (_type:np.ndarray_): A NumPy array containing the average attention weights for label 1 (grade 2&3)
+        modality_cont_label_0_correct_avg (_type:np.ndarray_): A NumPy array containing the average attention weights for label 0 (grade 4) for correctly predicted samples
+        modality_cont_label_1_correct_avg (_type:np.ndarray_): A NumPy array containing the average attention weights for label 1 (grade 2&3) for correctly predicted samples
+        modality_cont_correct_avg (_type:np.ndarray_): A NumPy array containing the average attention weights for correctly predicted samples across all labels
 
     '''
     # Calculate the mean attention weights
@@ -1148,7 +1151,13 @@ def Inter_2_calculate_avg_attn_weights(y_labels, y_predicted, all_weights)-> tup
     Clinical_contribution_label_1_correct_avg = df[df['True_Label'] == 1 & df['Predicted'] == 1]['Attention_Weight_Clinical'].mean()
     modality_cont_label_1_correct_avg = np.array([MRI_contribution_label_1_correct_avg, Clinical_contribution_label_1_correct_avg])
 
-    return modality_cont_avg, modality_cont_label_0_avg, modality_cont_label_1_avg
+    # Calculate mean attention weights for the correct predicted samples
+    MRI_contribution_correct_avg = df[(df['True_Label'] == 1 & df['Predicted'] == 1) | (df['True_Label'] == 0 & df['Predicted'] == 0)]['Attention_Weight_MRI'].mean()
+    Clinical_contribution_correct_avg = df[(df['True_Label'] == 1 & df['Predicted'] == 1) | (df['True_Label'] == 0 & df['Predicted'] == 0)]['Attention_Weight_Clinical'].mean()
+    modality_cont_correct_avg = np.array([MRI_contribution_correct_avg, Clinical_contribution_correct_avg])
+
+
+    return modality_cont_avg, modality_cont_label_0_avg, modality_cont_label_1_avg, modality_cont_label_0_correct_avg, modality_cont_label_1_correct_avg, modality_cont_correct_avg
 
 
 def calculate_save_metrics_intermediate_2(config, modality, y_labels, y_predicted, training_time_spent, test_loss=None, all_weights=None)-> tuple[float, float, float, float, float]:   
