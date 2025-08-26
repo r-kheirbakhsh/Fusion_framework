@@ -162,7 +162,10 @@ class Model:
                 
                 if self.config.fused_model in ['Inter_2_concat_attn', 'Inter_1_concat_attn']:
                     outputs, attn_weights = model(inputs)
-                    all_weights.append(attn_weights.detach().cpu())
+                    # all_weights.append(attn_weights.detach().cpu())
+                    attn_weights = torch.squeeze(attn_weights, 0)
+                    all_weights.append(attn_weights.detach().cpu()) #.numpy())
+
                 else:
                     outputs = model(inputs)
 
@@ -194,15 +197,24 @@ class Model:
         y_labels = np.array(y_labels)
         y_outputs = np.array(y_outputs)
         y_predicted = np.array(y_predicted)
+        print(f"True labels shape: {y_labels.shape}, True labels type: {type(y_labels)}")
+        print(f"Predicted shape: {y_outputs.shape}, Predicted type: {type(y_outputs)}")
+
+        # if self.config.fused_model in ['Inter_2_concat_attn', 'Inter_1_concat_attn']:
+        #     all_weights = torch.cat(all_weights, dim=0)
+        #     mean_weights = all_weights.mean(dim=0).squeeze()
+        #     print("Average modality importance:", mean_weights.numpy())
+        #     return y_labels, y_outputs, y_predicted, test_loss, all_weights
 
         if self.config.fused_model in ['Inter_2_concat_attn', 'Inter_1_concat_attn']:
-            all_weights = torch.cat(all_weights, dim=0)
-            mean_weights = all_weights.mean(dim=0).squeeze()
-            print("Average modality importance:", mean_weights.numpy())
+            all_weights = np.array(all_weights)
+            print(f"Attention weights shape: {all_weights.shape}", f"Attention weights type: {type(all_weights)}")
+            mean_weights = all_weights.mean(axis=0).squeeze()
+            print("Average modality importance:", mean_weights)
             return y_labels, y_outputs, y_predicted, test_loss, all_weights
         
         else:
-            return y_labels, y_outputs, y_predicted, test_loss
+            return y_labels, y_outputs, y_predicted, test_loss #, None
 
 
 ################################################ Code for Early_1 Fusion ################################################
@@ -720,7 +732,7 @@ class Model:
             y_labels, y_outputs, y_predicted, test_loss = self._test_loop(model, test_dataloader)
 
         # calculate the metrics for the model and save the results in three file of .text, .json, and .csv
-        acc, mcc, f1_w, recall_w, precision_w  = calculate_save_metrics_intermediate_2(self.config, modality, y_labels, y_predicted, training_time_spent, test_loss)
+        acc, mcc, f1_w, recall_w, precision_w  = calculate_save_metrics_intermediate_2(self.config, modality, y_labels, y_predicted, training_time_spent, test_loss, all_weights)
 
         return acc, mcc, f1_w, recall_w, precision_w 
     

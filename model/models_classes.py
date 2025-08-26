@@ -599,7 +599,7 @@ class CustomSwin_b(nn.Module):
 
 # ---- Attention Block ----
 class ModalityAttention(nn.Module):
-    def __init__(self, input_dims, hidden_dim=300):
+    def __init__(self, input_dims, hidden_dim=256):
         super(ModalityAttention, self).__init__()
         # Project each modality into same hidden_dim space
         self.projections = nn.ModuleList([
@@ -625,7 +625,7 @@ class ModalityAttention(nn.Module):
    
     
 class GatedModalityAttention(nn.Module):
-    def __init__(self, input_dims, hidden_dim=300):
+    def __init__(self, input_dims, hidden_dim=256):
         super(GatedModalityAttention, self).__init__()
         # Project each modality into same hidden_dim space
         self.projections = nn.ModuleList([
@@ -711,12 +711,12 @@ class Inter_1_concat_attn (nn.Module):
                 raise ValueError(f"Unknown Clinical model type: {self.config.cl_model}")  
 
         # ----- Attention Fusion -----
-        self.modality_attention = ModalityAttention(input_dims, hidden_dim=300)
+        self.modality_attention = ModalityAttention(input_dims, hidden_dim=256)
         #self.gated_modality_attention = GatedModalityAttention(input_dims, hidden_dim=200)
 
         # ----- Classifier -----
         self.classifier = nn.Sequential(
-            nn.Linear(300, 128),
+            nn.Linear(256, 128),
             nn.LayerNorm(128),  # for small batch size (like 16) BatchNorm1d layer may make training inconsistant 
             nn.ReLU(),
             nn.Dropout(0.3),
@@ -901,8 +901,10 @@ class Inter_2_concat_attn(nn.Module):
             feats.append(clinical_feat)
 
         # Attention fusion
-        fused, attn_weights = self.modality_attention(feats)  # fused: (B,128), attn_weights: (B,M,1)
+        fused, attn_weights = self.modality_attention(feats)  # fused: Tensor of (B,256), attn_weights: Tensor of (B,M,1) M is the number of modalities
         # fused, gates = self.gated_modality_attention(feats)
+        # print(f"Fused feature shape: {fused.shape}", f"Fused feature type: {type(fused)}")
+        # print(f"Attention weights shape: {attn_weights.shape}", f"Attention weights type: {type(attn_weights)}")
 
         # Classify
         out = self.classifier(fused)

@@ -953,7 +953,8 @@ def calculate_save_metrics_late(config, modality, y_labels, y_predicted, multi, 
         return test_accuracy, MCC, f1_w, recall_w, precision_w  # return the accuracy and MCC for the fused model to be used in the loop over folds
 
 
-def calculate_save_metrics_intermediate_1(config, modality, y_labels, y_predicted, training_time_spent, test_loss=None)->tuple[float, float]:   
+
+def calculate_save_metrics_intermediate_1(config, modality, y_labels, y_predicted, training_time_spent, test_loss=None, all_weights=None)-> tuple[float, float, float, float, float]:   
     ''' This function takes two numpy array, one the labels and the other predicted value, and then calculates 
     the performance metrics and saves the reports on three files of .tex, .json, and .csv
 
@@ -971,8 +972,8 @@ def calculate_save_metrics_intermediate_1(config, modality, y_labels, y_predicte
             config.seed (_type:str_): for reproducability
             config.num_class (_type:int_): the number of class we have 2 or >2 
         modality(_type:str_): the modality(ies) used in the model
-        y_labels (_type:np.array_): the labels
-        y_predicted (_type:np.array_): the predicted values for y_labels
+        y_labels (_type:np.ndarray_): the labels
+        y_predicted (_type:np.ndarray_): the predicted values for y_labels
         training_time_spent (_type:float_): the time spent for training the model
         test_loss (_type:float_): the test loss of the intermediate fusion model 
 
@@ -1000,6 +1001,14 @@ def calculate_save_metrics_intermediate_1(config, modality, y_labels, y_predicte
     recall_w = report['weighted avg']['recall']
     precision_w = report['weighted avg']['precision']
 
+    # Calculate avg attention weights
+    if all_weights is not None:
+        modality_cont_avg, modality_cont_label_0_avg, modality_cont_label_1_avg = calculate_avg_attn_weights(y_labels, y_predicted, all_weights)
+    else:
+        modality_cont_avg = None
+        modality_cont_label_0_avg = None
+        modality_cont_label_1_avg = None
+
     axis_dic = {0: "Sagittal", 1: "Coronal", 2: "Axial"}
     # Save metrics to a text file
     with open(f'fold_{config.fold}_metrics.txt', 'w') as f:
@@ -1015,6 +1024,9 @@ def calculate_save_metrics_intermediate_1(config, modality, y_labels, y_predicte
         f.write(f'Test Loss: {test_loss:.4f}\n')
         f.write(f'Test Accuracy: {test_accuracy:.4f}\n')
         f.write(f'Test MCC: {MCC:.4f}\n\n')
+        f.write(f'Modality Continuous Avg: {modality_cont_avg}\n')
+        f.write(f'Modality Continuous Label 0 Avg: {modality_cont_label_0_avg}\n')
+        f.write(f'Modality Continuous Label 1 Avg: {modality_cont_label_1_avg}\n')
         f.write('Confusion Matrix:\n')
         f.write(f'{conf_matrix}\n\n')
         f.write('Classification Report:\n')
@@ -1039,6 +1051,9 @@ def calculate_save_metrics_intermediate_1(config, modality, y_labels, y_predicte
             "test_loss": test_loss,
             "test_accuracy": test_accuracy, 
             "test_MCC": MCC,
+            #"modality_continuous_avg": modality_cont_avg,
+            "modality_continuous_label_4_avg": modality_cont_label_0_avg,
+            "modality_continuous_label_2&3_avg": modality_cont_label_1_avg,
             "confusion_matrix": conf_matrix,
             "grade 2&3 precision": report['Grade 2&3']['precision'],
             "grade 2&3 recall": report['Grade 2&3']['recall'],
@@ -1086,7 +1101,57 @@ def calculate_save_metrics_intermediate_1(config, modality, y_labels, y_predicte
     return test_accuracy, MCC, f1_w, recall_w, precision_w  # return the accuracy and MCC for the fused model to be used in the loop over folds
 
 
-def calculate_save_metrics_intermediate_2(config, modality, y_labels, y_predicted, training_time_spent, test_loss=None)-> tuple[float, float, float, float, float]:   
+
+def Inter_2_calculate_avg_attn_weights(y_labels, y_predicted, all_weights)-> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    ''' This function takes a list of attention weights arrays and calculates the average attention weights across all arrays
+
+    Args:
+        y_labels (_type:np.ndarray_): The true labels
+        y_predicted (_type:np.ndarray_): The predicted labels
+        attn_weights (_type:np.ndarray_): A NumPy array containing attention weights
+
+    Returns:
+        modality_cont_avg (_type:np.ndarray_): A NumPy array containing the average attention weights
+        modality_cont_label_0_avg (_type:np.ndarray_): A NumPy array containing the average attention weights for label 0 (grade 4)
+        modality_cont_label_1_avg (_type:np.ndarray_): A NumPy array containing the average attention weights for label 1 (grade 2&3)
+
+    '''
+    # Calculate the mean attention weights
+    modality_cont_avg = all_weights.mean(axis=0).squeeze()
+
+    # Reshape attention weights to (number of instances in test, number of modalities)
+    attention_weights = attention_weights.reshape(attention_weights.shape[0], attention_weights.shape[1])
+    
+    df = pd.DataFrame({
+    'True_Label': y_labels,
+    'Predicted': y_predicted,
+    'Attention_Weight_MRI': attention_weights[:, 0],
+    'Attention_Weight_Clinical': attention_weights[:, 1],
+    })
+
+    # Calculate mean attention weights for each label
+    MRI_contribution_label_0_avg = df[df['True_Label'] == 0]['Attention_Weight_MRI'].mean()
+    Clinical_contribution_label_0_avg = df[df['True_Label'] == 0]['Attention_Weight_Clinical'].mean()
+    modality_cont_label_0_avg = np.array([MRI_contribution_label_0_avg, Clinical_contribution_label_0_avg])
+
+    MRI_contribution_label_1_avg = df[df['True_Label'] == 1]['Attention_Weight_MRI'].mean()
+    Clinical_contribution_label_1_avg = df[df['True_Label'] == 1]['Attention_Weight_Clinical'].mean()
+    modality_cont_label_1_avg = np.array([MRI_contribution_label_1_avg, Clinical_contribution_label_1_avg])
+
+    # Calculate mean attention weights for the correct predicted label 0
+    MRI_contribution_label_0_correct_avg = df[df['True_Label'] == 0 & df['Predicted'] == 0]['Attention_Weight_MRI'].mean()
+    Clinical_contribution_label_0_correct_avg = df[df['True_Label'] == 0 & df['Predicted'] == 0]['Attention_Weight_Clinical'].mean()
+    modality_cont_label_0_correct_avg = np.array([MRI_contribution_label_0_correct_avg, Clinical_contribution_label_0_correct_avg])
+
+    # Calculate mean attention weights for the correct predicted label 1
+    MRI_contribution_label_1_correct_avg = df[df['True_Label'] == 1 & df['Predicted'] == 1]['Attention_Weight_MRI'].mean()
+    Clinical_contribution_label_1_correct_avg = df[df['True_Label'] == 1 & df['Predicted'] == 1]['Attention_Weight_Clinical'].mean()
+    modality_cont_label_1_correct_avg = np.array([MRI_contribution_label_1_correct_avg, Clinical_contribution_label_1_correct_avg])
+
+    return modality_cont_avg, modality_cont_label_0_avg, modality_cont_label_1_avg
+
+
+def calculate_save_metrics_intermediate_2(config, modality, y_labels, y_predicted, training_time_spent, test_loss=None, all_weights=None)-> tuple[float, float, float, float, float]:   
     ''' This function takes two numpy array, one the labels and the other predicted value, and then calculates 
     the performance metrics and saves the reports on three files of .tex, .json, and .csv
 
@@ -1108,6 +1173,7 @@ def calculate_save_metrics_intermediate_2(config, modality, y_labels, y_predicte
         y_predicted (_type:np.array_): the predicted values for y_labels
         training_time_spent (_type:float_): the time spent for training the model
         test_loss (_type:float_): the test loss of the intermediate fusion model 
+        all_weights (_type:numpy.ndarray_): the attention weights of the model on the test dataset (only for attention-based models)
 
     Returns:
         test_accuracy (_type:float_): the accuracy of the model
@@ -1133,6 +1199,17 @@ def calculate_save_metrics_intermediate_2(config, modality, y_labels, y_predicte
     recall_w = report['weighted avg']['recall']
     precision_w = report['weighted avg']['precision']
 
+    # Calculate avg attention weights
+    if all_weights is not None:
+        modality_cont_avg = Inter_2_calculate_avg_attn_weights(y_labels, y_predicted, all_weights)
+        modality_cont_label_0_avg = None # temp
+        modality_cont_label_1_avg = None # temp
+    else:
+
+        modality_cont_avg = None
+        modality_cont_label_0_avg = None
+        modality_cont_label_1_avg = None
+
     axis_dic = {0: "Sagittal", 1: "Coronal", 2: "Axial"}
     # Save metrics to a text file
     with open(f'fold_{config.fold}_metrics.txt', 'w') as f:
@@ -1148,6 +1225,9 @@ def calculate_save_metrics_intermediate_2(config, modality, y_labels, y_predicte
         f.write(f'Test Loss: {test_loss:.4f}\n')
         f.write(f'Test Accuracy: {test_accuracy:.4f}\n')
         f.write(f'Test MCC: {MCC:.4f}\n\n')
+        f.write(f'Modality Contribution Avg: {modality_cont_avg}\n')
+        f.write(f'Modality Contribution Label 0 Avg: {modality_cont_label_0_avg}\n')
+        f.write(f'Modality Contribution Label 1 Avg: {modality_cont_label_1_avg}\n\n')
         f.write('Confusion Matrix:\n')
         f.write(f'{conf_matrix}\n\n')
         f.write('Classification Report:\n')
@@ -1165,13 +1245,16 @@ def calculate_save_metrics_intermediate_2(config, modality, y_labels, y_predicte
             "batch_size": config.batch_size_fused,
             "num_epochs": config.n_epochs_fused, 
             "training_time": training_time_spent,      
-            "learning_rate": config.lr_fused, # 'cyclic_1e-6_5e-5',  # I used hard coding rather than sending the learning rate via config
+            "learning_rate": config.lr_fused, 
             "clinical_scaling": config.scale_clinical_modality
         },
         "metrics": {
             "test_loss": test_loss,
-            "test_accuracy": test_accuracy, #report['accuracy']['f1_score'],
+            "test_accuracy": test_accuracy, 
             "test_MCC": MCC,
+            #"modality_contribution_avg": modality_cont_avg,
+            #"modality_contribution_label_4_avg": modality_cont_label_0_avg,
+            #"modality_contribution_label_2&3_avg": modality_cont_label_1_avg,
             "confusion_matrix": conf_matrix,
             "grade 2&3 precision": report['Grade 2&3']['precision'],
             "grade 2&3 recall": report['Grade 2&3']['recall'],
