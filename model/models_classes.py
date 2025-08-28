@@ -23,7 +23,7 @@ def set_seed(config):
 
 ############################ Initialization functions #####################################
 
-def init_weights(config,model, init_type="kaiming"):
+def init_weights(config, model, init_type="kaiming"):
     '''
     Apply custom initialization to all layers of a model
     Supports: kaiming, xavier, normal
@@ -595,22 +595,34 @@ class CustomSwin_b(nn.Module):
 
 ################################################# End of custom swin_b #################################################
 
-############################################### Inter_1_concat_attn Model ###############################################
+################################################### Attention Blocks ###################################################
 
-# ---- Attention Block ----
+
 class ModalityAttention(nn.Module):
-    def __init__(self, input_dims, hidden_dim=256):
+    """
+    Modality Attention with shared attention network.
+
+    """
+    def __init__(self, config, input_dims, hidden_dim=256):
         super(ModalityAttention, self).__init__()
+        self.config = config
+
         # Project each modality into same hidden_dim space
         self.projections = nn.ModuleList([
             nn.Linear(in_dim, hidden_dim) for in_dim in input_dims
         ])
+        # Initialize projections weights
+        for proj in self.projections:
+            init_weights(self.config, proj, init_type="kaiming")
+
         # Shared attention scorer
         self.attn = nn.Sequential(
             nn.Linear(hidden_dim, 64),
             nn.Tanh(),
             nn.Linear(64, 1)  # scalar score per modality
         )
+        # Initialize attention networks weights
+        init_weights(self.config, self.attn, init_type="kaiming")
 
     def forward(self, feats):  
         # feats = list of modality feature tensors, each (B, in_dim)
@@ -622,15 +634,80 @@ class ModalityAttention(nn.Module):
 
         fused = torch.sum(attn_weights * proj_feats, dim=1)  # (B, hidden_dim)
         return fused, attn_weights
-   
+
+
+class ModalityAttentionSeparate(nn.Module):
+    """
+    Modality Attention with separate attention networks per modality.
+    Each modality has its own attention MLP.
+
+    """
+    def __init__(self, config, input_dims, hidden_dim=256):
+        super().__init__()
+        self.config = config
+        self.num_modalities = len(input_dims)
+
+        # Project each modality feature into a shared hidden space
+        self.projections = nn.ModuleList([
+            nn.Linear(in_dim, hidden_dim) for in_dim in input_dims
+        ])
+        # Initialize projections weights
+        for proj in self.projections:
+            init_weights(self.config, proj, init_type="kaiming")
+
+        # Separate attention scorer per modality
+        self.attn_nets = nn.ModuleList([
+            nn.Sequential(
+                nn.Linear(hidden_dim, 64),
+                nn.Tanh(),
+                nn.Linear(64, 1)
+            ) for _ in range(self.num_modalities)
+        ])
+        # Initialize attention networks weights
+        for attn_net in self.attn_nets:
+            init_weights(self.config, attn_net, init_type="kaiming")
+
+    def forward(self, feats):
+        """
+        feats: list of modality features, each (B, in_dim)
+        Returns:
+            fused: (B, hidden_dim)
+            attn_weights: (B, M, 1)
+        """
+        # Project features to shared space
+        proj_feats = [proj(f) for proj, f in zip(self.projections, feats)]  # list of (B, hidden_dim)
+
+        # Compute attention scores per modality
+        attn_scores = [attn(f) for attn, f in zip(self.attn_nets, proj_feats)]  # list of (B, 1)
+        attn_scores = torch.stack(attn_scores, dim=1)  # (B, M, 1)
+
+        # Normalize scores with softmax
+        attn_weights = torch.softmax(attn_scores, dim=1)  # (B, M, 1)
+
+        # Weighted sum of features
+        proj_feats = torch.stack(proj_feats, dim=1)       # (B, M, hidden_dim)
+        fused = torch.sum(attn_weights * proj_feats, dim=1)  # (B, hidden_dim)
+
+        return fused, attn_weights
+ 
     
-class GatedModalityAttention(nn.Module):
-    def __init__(self, input_dims, hidden_dim=256):
-        super(GatedModalityAttention, self).__init__()
+class GatedModalityAttentionShared(nn.Module):
+    """
+    Gated sum over modality features with projection
+
+    """
+    def __init__(self, config, input_dims, hidden_dim=256):
+        super(GatedModalityAttentionShared, self).__init__()
+        self.config = config
+
         # Project each modality into same hidden_dim space
         self.projections = nn.ModuleList([
             nn.Linear(in_dim, hidden_dim) for in_dim in input_dims
         ])
+        # Initialize projections weights
+        for proj in self.projections:
+            init_weights(self.config, proj, init_type="kaiming")
+
         # Gating network (independent sigmoid gates per modality)
         self.gates = nn.Sequential(
             nn.Linear(hidden_dim, 64),
@@ -638,6 +715,8 @@ class GatedModalityAttention(nn.Module):
             nn.Linear(64, 1),
             nn.Sigmoid()   # gate between 0 and 1
         )
+        # Initialize gates weights
+        init_weights(self.config, self.gates, init_type="kaiming")
 
     def forward(self, feats):
         # feats = list of modality feature tensors, each (B, in_dim)
@@ -654,7 +733,89 @@ class GatedModalityAttention(nn.Module):
         fused = torch.sum(gated_feats, dim=1)  # (B, hidden_dim)
 
         return fused, gates
+
+
+class GatedMRIAttentionShared(nn.Module):
+    """
+    Gated sum over modality features without any projection.
+    Expects every modality feature to have the same dimension (e.g., 1024 for MRI encoders).
+
+    """
+    def __init__(self, config, input_dim, gate_hidden=64):
+        super(GatedMRIAttentionShared, self).__init__()
+        self.config = config
+
+        # Gating network -> scalar sigmoid gate per modality in [0,1]
+        # When (B, M, input_dim) through this single self.gates, PyTorch applies the same set of weights to each modality vector along the M dimension 
+        # (like a nn.Linear applied to each modality slice independently, but sharing parameters). So, one shared gating network across all modalities. 
+        # Each modality vector gets its gate computed using the same function (same learned weights).
+        self.gates = nn.Sequential(
+            nn.Linear(input_dim, gate_hidden),
+            nn.ReLU(),
+            nn.Linear(gate_hidden, 1),
+            nn.Sigmoid()   # gate between 0 and 1
+        )
+        # Initialize gates weights
+        init_weights(self.config, self.gates, init_type="kaiming")
+
+    def forward(self, feats):
+        # feats: list[Tensor], each (B, input_dim)  
+        feats = torch.stack(feats, dim=1)  # (B, M, hidden_dim), M: number of MRI modalities
+        # Compute gates
+        gates = self.gates(feats)   # (B, M, 1), each value in [0,1]
+        # Apply gates to modality embeddings
+        gated_feats = gates * feats # (B, M, hidden_dim)
+        # Fuse (sum or mean) across modalities
+        fused = torch.sum(gated_feats, dim=1)  # (B, hidden_dim)
+        return fused, gates
     
+
+class GatedMRIAttentionSeparate(nn.Module):
+    """
+    Gated sum over modality features (per-modality gating networks) without any projection.
+    Each modality has its own gate MLP.
+
+    """
+    def __init__(self, config, input_dim, gate_hidden=64):
+        super().__init__()
+        self.config = config
+        if 'Clinical' in self.config.modalities:
+            self.num_modalities = len(self.config.modalities) - 1  # Exclude Clinical
+        else:
+            self.num_modalities = len(self.config.modalities)
+
+        # A separate gate network for each modality
+        self.gates = nn.ModuleList([
+            nn.Sequential(
+                nn.Linear(input_dim, gate_hidden),
+                nn.ReLU(),
+                nn.Linear(gate_hidden, 1),
+                nn.Sigmoid()
+            ) for _ in range(self.num_modalities)
+        ])
+
+        for gate in self.gates:
+            init_weights(self.config, gate, init_type="kaiming")
+
+    def forward(self, feats):
+        """
+        feats: list of modality features, each (B, input_dim)
+        Returns: fused feature (B, input_dim), gates (B, M, 1)
+
+        """
+        gates = [gate(f) for gate, f in zip(self.gates, feats)]  # list of (B,1)
+        gates = torch.stack(gates, dim=1)                        # (B, M, 1)
+
+        feats = torch.stack(feats, dim=1)                        # (B, M, input_dim)
+        gated_feats = gates * feats                             # (B, M, input_dim)
+        fused = torch.sum(gated_feats, dim=1)                   # (B, input_dim)
+
+        return fused, gates
+
+
+################################################ End of Attention Blocks ################################################
+
+############################################### Inter_1_concat_attn Model ###############################################
 
 class Inter_1_concat_attn (nn.Module):
     def __init__ (self, config):
@@ -711,8 +872,8 @@ class Inter_1_concat_attn (nn.Module):
                 raise ValueError(f"Unknown Clinical model type: {self.config.cl_model}")  
 
         # ----- Attention Fusion -----
-        self.modality_attention = ModalityAttention(input_dims, hidden_dim=256)
-        #self.gated_modality_attention = GatedModalityAttention(input_dims, hidden_dim=200)
+        self.modality_attention = ModalityAttention(self.config, input_dims, hidden_dim=256)
+        #self.gated_modality_attention = GatedModalityAttentionShared(self.config, input_dims, hidden_dim=200)
 
         # ----- Classifier -----
         self.classifier = nn.Sequential(
@@ -728,7 +889,6 @@ class Inter_1_concat_attn (nn.Module):
 
             nn.Linear(64, self.config.num_class - 1)
         )
-
         # Initialize classifier weights
         init_weights(self.config, self.classifier, init_type="kaiming")
 
@@ -758,65 +918,149 @@ class Inter_1_concat_attn (nn.Module):
 
 ############################################### End of Inter_1_concat_attn ####################################################
 
+################################################# Inter_1_gated_attn Model ####################################################
+
+class Inter_1_gated_attn (nn.Module):
+    def __init__ (self, config):
+        super(Inter_1_gated_attn, self).__init__()
+        self.config = config
+        self.modalities = config.modalities
+
+        # ----- Encoders -----
+        input_dims = []
+
+        # Define encoders for each MRI modality
+        if any(m in self.modalities for m in ['T1_bias','T1c_bias','T2_bias','FLAIR_bias']):
+            self.mri_encoders = nn.ModuleDict()
+            input_dims.append(1024)  # for DenseNet121/swin_b 
+
+            if self.config.mri_model == 'denseNet121':
+                for modality in self.modalities:
+                    if modality in ['T1_bias', 'T1c_bias', 'T2_bias', 'FLAIR_bias']:
+                        # Define MRI encoder
+                        self.mri_encoders[modality] = CustomDenseNet121(self.config, in_channels=1 , with_head=0)
+
+            elif self.config.mri_model == 'swin_b':
+                for modality in self.modalities:
+                    if modality in ['T1_bias', 'T1c_bias', 'T2_bias', 'FLAIR_bias']:
+                        # Define MRI encoder
+                        self.mri_encoders[modality] = CustomSwin_b(self.config, in_channels=1 , with_head=0)
+
+            else:
+                raise ValueError(f"Unknown MRI model type: {self.config.mri_model}")
+
+        # Define Clinical encoder
+        if 'Clinical' in self.modalities:
+            if self.config.cl_model == 'AutoInt':
+                head_config = LinearHeadConfig(
+                    layers="",
+                    dropout=0.1,  # default
+                    initialization=("kaiming"),  # No additional layer in head, just a mapping layer to output_dim                     
+                )
+
+                # Initialize AutoInt model with tuned parameters
+                model_config = AutoIntConfig(task="classification", head="LinearHead", attn_dropouts=0.3, attn_embed_dim=4, batch_norm_continuous_input=True, embedding_dim=16, num_attn_blocks=1, num_heads=4)
+                model_config.continuous_dim = 1
+                model_config.categorical_dim = 1
+                model_config.categorical_cardinality = [2]
+                model_config.output_cardinality = [2]
+                model_config.output_dim = 1  # For binary classification
+                model_config.head_config = head_config.__dict__
+                self.clinical_encoder = AutoIntModel_intermediate(config=model_config)
+
+                input_dims.append(8)  # output dim of AutoInt
+
+            else:
+                raise ValueError(f"Unknown Clinical model type: {self.config.cl_model}")  
+
+        # ----- Gated Attention Fusion of MRI -----
+        self.gated_mri_attention_shared = GatedMRIAttentionShared(self.config, input_dim=1024, gate_hidden=64) # dimension for the features encoded by DenseNet121/swin_b
+        # self.gated_mri_attention = GatedMRIAttentionSeparate(self.config, input_dim=1024, gate_hidden=64)
+
+        # ----- Attention Fusion of MRI and Clinical -----
+        # self.modality_attention = ModalityAttention(self.config, input_dims, hidden_dim=256)
+        self.modality_attention_separate = ModalityAttentionSeparate(self.config, input_dims, hidden_dim=256)
+
+        # ----- Classifier -----
+        self.classifier = nn.Sequential(
+            nn.Linear(256, 128),
+            nn.LayerNorm(128),  # for small batch size (like 16) BatchNorm1d layer may make training inconsistant 
+            nn.ReLU(),
+            nn.Dropout(0.3),
+
+            nn.Linear(128, 64),
+            nn.LayerNorm(64),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+
+            nn.Linear(64, self.config.num_class - 1)
+        )
+        # Initialize classifier weights
+        init_weights(self.config, self.classifier, init_type="kaiming")
+
+
+    def forward(self, modalities_input_dict):
+        MRI_features = []
+        features = []
+
+        # MRI feature
+        for modality, encoder in self.mri_encoders.items():
+            x = modalities_input_dict[modality]  # (B, 1, H, W)
+            feat = encoder(x)
+            MRI_features.append(feat)
+
+        # Gated attention fusion of MRI modalities
+        fused_mri_features, mri_gate_weights = self.gated_mri_attention_shared(MRI_features)
+        features.append(fused_mri_features)
+
+        # Clinical feature
+        if 'Clinical' in self.modalities:
+            x_c = modalities_input_dict['Clinical']
+            clinical_feat = self.clinical_encoder(x_c)  # (B,8)
+            features.append(clinical_feat)
+
+        # Attention fusion
+        fused, attn_weights = self.modality_attention_separate(features)
+
+        # Classify
+        out = self.classifier(fused)
+        return out, attn_weights
+
+
+############################################ End of Inter_1_gated_attn Model ###########################################
+
 ################################################# Inter_2_concat_attn ##################################################
 
-# ---- Attention Block ----
-class ModalityAttention(nn.Module):
-    def __init__(self, input_dims, hidden_dim=256):
-        super(ModalityAttention, self).__init__()
-        # Project each modality into same hidden_dim space
-        self.projections = nn.ModuleList([
-            nn.Linear(in_dim, hidden_dim) for in_dim in input_dims
-        ])
-        # Shared attention scorer
-        self.attn = nn.Sequential(
-            nn.Linear(hidden_dim, 64),
-            nn.Tanh(),
-            nn.Linear(64, 1)  # scalar score per modality
-        )
+# class GatedModalityAttention(nn.Module):
+#     def __init__(self, config, input_dims, hidden_dim=256):
+#         super(GatedModalityAttention, self).__init__()
+#         # Project each modality into same hidden_dim space
+#         self.projections = nn.ModuleList([
+#             nn.Linear(in_dim, hidden_dim) for in_dim in input_dims
+#         ])
+#         # Gating network (independent sigmoid gates per modality)
+#         self.gates = nn.Sequential(
+#             nn.Linear(hidden_dim, 64),
+#             nn.ReLU(),
+#             nn.Linear(64, 1),
+#             nn.Sigmoid()   # gate between 0 and 1
+#         )
 
-    def forward(self, feats):  
-        # feats = list of modality feature tensors, each (B, in_dim)
-        proj_feats = [proj(f) for proj, f in zip(self.projections, feats)]  
-        proj_feats = torch.stack(proj_feats, dim=1)  # (B, M, hidden_dim)
+#     def forward(self, feats):
+#         # feats = list of modality feature tensors, each (B, in_dim)
+#         proj_feats = [proj(f) for proj, f in zip(self.projections, feats)]  
+#         proj_feats = torch.stack(proj_feats, dim=1)  # (B, M, hidden_dim)
 
-        scores = self.attn(proj_feats)               # (B, M, 1)
-        attn_weights = torch.softmax(scores, dim=1)  # (B, M, 1)
+#         # Compute gates
+#         gates = self.gates(proj_feats)   # (B, M, 1), each value in [0,1]
 
-        fused = torch.sum(attn_weights * proj_feats, dim=1)  # (B, hidden_dim)
-        return fused, attn_weights
+#         # Apply gates to modality embeddings
+#         gated_feats = gates * proj_feats # (B, M, hidden_dim)
 
+#         # Fuse (sum or mean) across modalities
+#         fused = torch.sum(gated_feats, dim=1)  # (B, hidden_dim)
 
-class GatedModalityAttention(nn.Module):
-    def __init__(self, input_dims, hidden_dim=256):
-        super(GatedModalityAttention, self).__init__()
-        # Project each modality into same hidden_dim space
-        self.projections = nn.ModuleList([
-            nn.Linear(in_dim, hidden_dim) for in_dim in input_dims
-        ])
-        # Gating network (independent sigmoid gates per modality)
-        self.gates = nn.Sequential(
-            nn.Linear(hidden_dim, 64),
-            nn.ReLU(),
-            nn.Linear(64, 1),
-            nn.Sigmoid()   # gate between 0 and 1
-        )
-
-    def forward(self, feats):
-        # feats = list of modality feature tensors, each (B, in_dim)
-        proj_feats = [proj(f) for proj, f in zip(self.projections, feats)]  
-        proj_feats = torch.stack(proj_feats, dim=1)  # (B, M, hidden_dim)
-
-        # Compute gates
-        gates = self.gates(proj_feats)   # (B, M, 1), each value in [0,1]
-
-        # Apply gates to modality embeddings
-        gated_feats = gates * proj_feats # (B, M, hidden_dim)
-
-        # Fuse (sum or mean) across modalities
-        fused = torch.sum(gated_feats, dim=1)  # (B, hidden_dim)
-
-        return fused, gates
+#         return fused, gates
 
 
 class Inter_2_concat_attn(nn.Module):
@@ -865,8 +1109,9 @@ class Inter_2_concat_attn(nn.Module):
             
 
         # ----- Attention Fusion -----
-        self.modality_attention = ModalityAttention(input_dims, hidden_dim=256)
-        # self.gated_modality_attention = GatedModalityAttention(input_dims, hidden_dim=256)
+        # self.modality_attention = ModalityAttention(self.config, input_dims, hidden_dim=256)
+        self.modality_attention_separate = ModalityAttentionSeparate(self.config, input_dims, hidden_dim=256)
+        # self.gated_modality_attention = GatedModalityAttention(self.config, input_dims, hidden_dim=256)
 
         # ----- Classifier -----
         self.classifier = nn.Sequential(
@@ -901,7 +1146,7 @@ class Inter_2_concat_attn(nn.Module):
             feats.append(clinical_feat)
 
         # Attention fusion
-        fused, attn_weights = self.modality_attention(feats)  # fused: Tensor of (B,256), attn_weights: Tensor of (B,M,1) M is the number of modalities
+        fused, attn_weights = self.modality_attention_separate(feats)  # fused: Tensor of (B,256), attn_weights: Tensor of (B,M,1) M is the number of modalities
         # fused, gates = self.gated_modality_attention(feats)
         # print(f"Fused feature shape: {fused.shape}", f"Fused feature type: {type(fused)}")
         # print(f"Attention weights shape: {attn_weights.shape}", f"Attention weights type: {type(attn_weights)}")
@@ -913,6 +1158,11 @@ class Inter_2_concat_attn(nn.Module):
 
 
 ############################################# End of Inter_2_concat_attn ###############################################
+
+################################################# Inter_2_concat_attn_seperate ##########################################
+
+
+############################################## End of Inter_2_concat_attn_seperate ######################################
 
 ############################################## Inter_2_bi_crossattention ###############################################
 

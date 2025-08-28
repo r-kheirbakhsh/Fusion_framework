@@ -160,7 +160,7 @@ class Model:
                 inputs = move_to_device(inputs, device)
                 labels = move_to_device(labels, device)
                 
-                if self.config.fused_model in ['Inter_2_concat_attn', 'Inter_1_concat_attn']:
+                if self.config.fused_model in ['Inter_2_concat_attn', 'Inter_1_concat_attn', 'Inter_1_gated_attn']:
                     outputs, attn_weights = model(inputs)
                     # all_weights.append(attn_weights.detach().cpu())
                     attn_weights = torch.squeeze(attn_weights, 0)
@@ -206,7 +206,7 @@ class Model:
         #     print("Average modality importance:", mean_weights.numpy())
         #     return y_labels, y_outputs, y_predicted, test_loss, all_weights
 
-        if self.config.fused_model in ['Inter_2_concat_attn', 'Inter_1_concat_attn']:
+        if self.config.fused_model in ['Inter_2_concat_attn', 'Inter_1_concat_attn', 'Inter_1_gated_attn']:
             all_weights = np.array(all_weights)
             print(f"Attention weights shape: {all_weights.shape}", f"Attention weights type: {type(all_weights)}")
             mean_weights = all_weights.mean(axis=0).squeeze()
@@ -569,6 +569,8 @@ class Model:
         optimizer = optim.AdamW([
             {'params': model.mri_encoders.parameters(), 'lr': self.config.lr_mri, 'weight_decay': self.config.lmbda},
             {'params': model.clinical_encoder.parameters(), 'lr': self.config.lr_cl, 'weight_decay': self.config.lmbda},
+            {'params': model.modality_attention_separate.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda}, # for Inter_1_conat_attn
+            {'params': model.gated_mri_attention_shared.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda},
             {'params': model.classifier.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda}
             ])
 
@@ -623,7 +625,7 @@ class Model:
             print("Model checkpoint not found. Ensure the path to 'best_model.pth' is correct.")
             return
 
-        if self.config.fused_model in ['Inter_1_concat_attn']:
+        if self.config.fused_model in ['Inter_1_concat_attn', 'Inter_1_gated_attn']:
             y_labels, y_outputs, y_predicted, test_loss, all_weights = self._test_loop(model, test_dataloader)
         else:
             y_labels, y_outputs, y_predicted, test_loss = self._test_loop(model, test_dataloader)
@@ -674,6 +676,7 @@ class Model:
         optimizer = optim.AdamW([
             {'params': model.mri_encoder.parameters(), 'lr': self.config.lr_mri, 'weight_decay': self.config.lmbda},
             {'params': model.clinical_encoder.parameters(), 'lr': self.config.lr_cl, 'weight_decay': self.config.lmbda},
+            {'params': model.modality_attention_separate.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda}, # for Inter_2_conat_attn
             {'params': model.classifier.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda}
             ])
 

@@ -110,7 +110,7 @@ class nn_Trainer_intermediate:
                 labels = move_to_device(labels, self.device)
         
                 self.optimizer.zero_grad()
-                if self.config.fused_model in ['Inter_2_concat_attn', 'Inter_1_concat_attn']:
+                if self.config.fused_model in ['Inter_2_concat_attn', 'Inter_1_concat_attn', 'Inter_1_gated_attn']:
                     outputs, attn = self.model(inputs)
                 else:
                     outputs = self.model(inputs)
@@ -158,7 +158,7 @@ class nn_Trainer_intermediate:
                     inputs = move_to_device(inputs, self.device)
                     labels = move_to_device(labels, self.device)
 
-                    if self.config.fused_model in ['Inter_2_concat_attn', 'Inter_1_concat_attn']:
+                    if self.config.fused_model in ['Inter_2_concat_attn', 'Inter_1_concat_attn', 'Inter_1_gated_attn']:
                         outputs, attn = self.model(inputs)
                     else:
                         outputs = self.model(inputs)

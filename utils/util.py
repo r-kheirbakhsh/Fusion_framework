@@ -3,6 +3,7 @@
 import sys
 import numpy as np
 import pandas as pd
+from typing import Tuple
 import json
 import torch
 from torch.utils.data import DataLoader, WeightedRandomSampler
@@ -42,7 +43,7 @@ def move_to_device(batch, device):
     return batch.to(device)
 
 
-def scale_clinical_data(config, train_df, val_df, test_df)->tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def scale_clinical_data(config, train_df, val_df, test_df)-> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     ''' This function takes a config, and the splits of the dataset (slice level) and scale the Clinical data
 
     Args:
@@ -80,7 +81,7 @@ def scale_clinical_data(config, train_df, val_df, test_df)->tuple[pd.DataFrame, 
 
        
 
-def prepare_dataset_split(config, dataset_patient_df, train_index, test_index)->tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def prepare_dataset_split(config, dataset_patient_df, train_index, test_index)-> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     ''' This function takes a config, and the splits of the dataset (patient level) and prepare the train, val, and test datasets (slice level)
 
     Args:
@@ -128,7 +129,7 @@ def prepare_dataset_split(config, dataset_patient_df, train_index, test_index)->
 
 
 
-def dataset_slice_split(config)->tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def dataset_slice_split(config)-> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     ''' This function takes a config, and split the dataset (slice level) specified in the config into train, val, and test, saves them, and then returns their data frames
 
     Args:
@@ -180,7 +181,7 @@ def dataset_slice_split(config)->tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]
 
 
 
-def dataset_slice_get(config)->tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def dataset_slice_get(config)-> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     ''' This function takes a config, and split the dataset (slice level) specified in the config into train, val, and test, saves them, and then returns their data frames
 
     Args:
@@ -308,7 +309,7 @@ def slice_to_patient_dataset(dataset_df_slice):
 
 
 
-def prepare_classic_classifier_dataset(dataset)->tuple[np.ndarray, np.ndarray]:
+def prepare_classic_classifier_dataset(dataset)-> Tuple[np.ndarray, np.ndarray]:
 
     # data_np = np.array([instance.item() for instance in dataloader][0])
     # labels_np = np.array([instance.item() for instance in dataloader][1])
@@ -331,7 +332,7 @@ def prepare_classic_classifier_dataset(dataset)->tuple[np.ndarray, np.ndarray]:
 
 
 
-def get_dataloader_late(metadata_df, config, train_flag, modality, batch_size) -> tuple[UCSFslice_late_fusion,DataLoader]:
+def get_dataloader_late(metadata_df, config, train_flag, modality, batch_size) -> Tuple[UCSFslice_late_fusion,DataLoader]:
     ''' This function takes a data set in pandas dataframe fromat and creats the relevant dataset class and dataloader 
 
     Args:
@@ -411,7 +412,7 @@ def get_labels_from_df(metadata_df, num_class, label_col):
 
 
 
-def get_dataloader_late_sampler(metadata_df, config, modality, train_flag, batch_size) -> tuple[UCSFslice_late_fusion,DataLoader]:
+def get_dataloader_late_sampler(metadata_df, config, modality, train_flag, batch_size) -> Tuple[UCSFslice_late_fusion,DataLoader]:
     ''' This function takes a data set in pandas dataframe fromat and creates the relevant dataset class and dataloader with sampler
     
     Args:
@@ -472,7 +473,7 @@ def get_dataloader_late_sampler(metadata_df, config, modality, train_flag, batch
 
 
 
-def get_dataloader_intermediate_1(metadata_df, config, train_flag, batch_size) -> tuple[UCSFslice_intermediate_1_fusion,DataLoader]:
+def get_dataloader_intermediate_1(metadata_df, config, train_flag, batch_size) -> Tuple[UCSFslice_intermediate_1_fusion,DataLoader]:
     ''' This function takes a data set in pandas dataframe fromat and creats the relevant dataset class and dataloader 
 
     Args:
@@ -521,7 +522,7 @@ def get_dataloader_intermediate_1(metadata_df, config, train_flag, batch_size) -
 
 
 
-def get_dataloader_intermediate_1_sampler(metadata_df, config, train_flag, batch_size) -> tuple[UCSFslice_intermediate_1_fusion, DataLoader]:
+def get_dataloader_intermediate_1_sampler(metadata_df, config, train_flag, batch_size) -> Tuple[UCSFslice_intermediate_1_fusion, DataLoader]:
     ''' This function takes a data set in pandas dataframe fromat and creates the relevant dataset class and dataloader with sampler
     
     Args:
@@ -579,7 +580,7 @@ def get_dataloader_intermediate_1_sampler(metadata_df, config, train_flag, batch
 
 
 
-def get_dataloader_intermediate_2(metadata_df, config, train_flag, batch_size) -> tuple[UCSFslice_intermediate_2_fusion,DataLoader]:
+def get_dataloader_intermediate_2(metadata_df, config, train_flag, batch_size) -> Tuple[UCSFslice_intermediate_2_fusion,DataLoader]:
     ''' This function takes a data set in pandas dataframe fromat and creats the relevant dataset class and dataloader 
 
     Args:
@@ -628,7 +629,7 @@ def get_dataloader_intermediate_2(metadata_df, config, train_flag, batch_size) -
 
 
 
-def get_dataloader_intermediate_2_sampler(metadata_df, config, train_flag, batch_size) -> tuple[UCSFslice_intermediate_2_fusion, DataLoader]:
+def get_dataloader_intermediate_2_sampler(metadata_df, config, train_flag, batch_size) -> Tuple[UCSFslice_intermediate_2_fusion, DataLoader]:
     ''' This function takes a data set in pandas dataframe fromat and creates the relevant dataset class and dataloader with sampler
     
     Args:
@@ -688,7 +689,7 @@ def get_dataloader_intermediate_2_sampler(metadata_df, config, train_flag, batch
 
 
 
-def get_dataloader_early_2(metadata_df, config, train_flag, batch_size) -> tuple[UCSFslice_early_2_fusion, DataLoader]:
+def get_dataloader_early_2(metadata_df, config, train_flag, batch_size) -> Tuple[UCSFslice_early_2_fusion, DataLoader]:
     ''' This function takes a data set in pandas dataframe fromat and creats the relevant dataset class and dataloader 
 
     Args:
@@ -737,7 +738,7 @@ def get_dataloader_early_2(metadata_df, config, train_flag, batch_size) -> tuple
 
 
 
-def get_dataloader_early_2_sampler(metadata_df, config, train_flag, batch_size) -> tuple[UCSFslice_early_2_fusion, DataLoader]:
+def get_dataloader_early_2_sampler(metadata_df, config, train_flag, batch_size) -> Tuple[UCSFslice_early_2_fusion, DataLoader]:
     ''' This function takes a data set in pandas dataframe fromat and creats the relevant dataset class and dataloader 
 
     Args:
@@ -799,7 +800,7 @@ def get_dataloader_early_2_sampler(metadata_df, config, train_flag, batch_size) 
 
 
 
-def calculate_save_metrics_late(config, modality, y_labels, y_predicted, multi, training_time_spent, test_loss=None) -> tuple[float, float, float, float, float]:   
+def calculate_save_metrics_late(config, modality, y_labels, y_predicted, multi, training_time_spent, test_loss=None) -> Tuple[float, float, float, float, float]:   
     ''' This function takes two numpy array, one the labels and the other predicted value, and then calculates 
     the performance metrics and saves the reports on three files of .tex, .json, and .csv
 
@@ -954,7 +955,7 @@ def calculate_save_metrics_late(config, modality, y_labels, y_predicted, multi, 
 
 
 
-def calculate_save_metrics_intermediate_1(config, modality, y_labels, y_predicted, training_time_spent, test_loss=None, all_weights=None)-> tuple[float, float, float, float, float]:   
+def calculate_save_metrics_intermediate_1(config, modality, y_labels, y_predicted, training_time_spent, test_loss=None, all_weights=None)-> Tuple[float, float, float, float, float]:   
     ''' This function takes two numpy array, one the labels and the other predicted value, and then calculates 
     the performance metrics and saves the reports on three files of .tex, .json, and .csv
 
@@ -1003,11 +1004,16 @@ def calculate_save_metrics_intermediate_1(config, modality, y_labels, y_predicte
 
     # Calculate avg attention weights
     if all_weights is not None:
-        modality_cont_avg, modality_cont_label_0_avg, modality_cont_label_1_avg = calculate_avg_attn_weights(y_labels, y_predicted, all_weights)
+        modality_cont_avg, modality_cont_label_0_avg, modality_cont_label_1_avg, \
+            modality_cont_label_0_correct_avg, modality_cont_label_1_correct_avg, \
+            modality_cont_correct_avg = calculate_avg_attn_weights(y_labels, y_predicted, all_weights)
     else:
         modality_cont_avg = None
         modality_cont_label_0_avg = None
         modality_cont_label_1_avg = None
+        modality_cont_label_0_correct_avg = None
+        modality_cont_label_1_correct_avg = None
+        modality_cont_correct_avg = None
 
     axis_dic = {0: "Sagittal", 1: "Coronal", 2: "Axial"}
     # Save metrics to a text file
@@ -1027,6 +1033,9 @@ def calculate_save_metrics_intermediate_1(config, modality, y_labels, y_predicte
         f.write(f'Modality Continuous Avg: {modality_cont_avg}\n')
         f.write(f'Modality Continuous Label 0 Avg: {modality_cont_label_0_avg}\n')
         f.write(f'Modality Continuous Label 1 Avg: {modality_cont_label_1_avg}\n')
+        f.write(f'Modality Contribution Label 0 Correct Avg: {modality_cont_label_0_correct_avg}\n')
+        f.write(f'Modality Contribution Label 1 Correct Avg: {modality_cont_label_1_correct_avg}\n')
+        f.write(f'Modality Contribution Correct Avg: {modality_cont_correct_avg}\n\n')
         f.write('Confusion Matrix:\n')
         f.write(f'{conf_matrix}\n\n')
         f.write('Classification Report:\n')
@@ -1051,9 +1060,6 @@ def calculate_save_metrics_intermediate_1(config, modality, y_labels, y_predicte
             "test_loss": test_loss,
             "test_accuracy": test_accuracy, 
             "test_MCC": MCC,
-            #"modality_continuous_avg": modality_cont_avg,
-            "modality_continuous_label_4_avg": modality_cont_label_0_avg,
-            "modality_continuous_label_2&3_avg": modality_cont_label_1_avg,
             "confusion_matrix": conf_matrix,
             "grade 2&3 precision": report['Grade 2&3']['precision'],
             "grade 2&3 recall": report['Grade 2&3']['recall'],
@@ -1102,7 +1108,7 @@ def calculate_save_metrics_intermediate_1(config, modality, y_labels, y_predicte
 
 
 
-def Inter_2_calculate_avg_attn_weights(y_labels, y_predicted, all_weights)-> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+def calculate_avg_attn_weights(y_labels, y_predicted, all_weights)-> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     ''' This function takes a list of attention weights arrays and calculates the average attention weights across all arrays
 
     Args:
@@ -1119,48 +1125,88 @@ def Inter_2_calculate_avg_attn_weights(y_labels, y_predicted, all_weights)-> tup
         modality_cont_correct_avg (_type:np.ndarray_): A NumPy array containing the average attention weights for correctly predicted samples across all labels
 
     '''
-    # Calculate the mean attention weights
-    modality_cont_avg = all_weights.mean(axis=0).squeeze()
+    # # Calculate the mean attention weights
+    # modality_cont_avg = all_weights.mean(axis=0).squeeze()
 
-    # Reshape attention weights to (number of instances in test, number of modalities)
-    attention_weights = attention_weights.reshape(attention_weights.shape[0], attention_weights.shape[1])
+    # # Reshape attention weights to (number of instances in test, number of modalities)
+    # attention_weights = all_weights.squeeze(-1)
     
-    df = pd.DataFrame({
-    'True_Label': y_labels,
-    'Predicted': y_predicted,
-    'Attention_Weight_MRI': attention_weights[:, 0],
-    'Attention_Weight_Clinical': attention_weights[:, 1],
-    })
+    # df = pd.DataFrame({
+    # 'True_Label': y_labels,
+    # 'Predicted': y_predicted,
+    # 'Attention_Weight_MRI': attention_weights[:, 0],
+    # 'Attention_Weight_Clinical': attention_weights[:, 1],
+    # })
 
+    # # Calculate mean attention weights for each label
+    # MRI_contribution_label_0_avg = df[df['True_Label'] == 0]['Attention_Weight_MRI'].mean()
+    # Clinical_contribution_label_0_avg = df[df['True_Label'] == 0]['Attention_Weight_Clinical'].mean()
+    # modality_cont_label_0_avg = np.array([MRI_contribution_label_0_avg, Clinical_contribution_label_0_avg])
+
+    # MRI_contribution_label_1_avg = df[df['True_Label'] == 1]['Attention_Weight_MRI'].mean()
+    # Clinical_contribution_label_1_avg = df[df['True_Label'] == 1]['Attention_Weight_Clinical'].mean()
+    # modality_cont_label_1_avg = np.array([MRI_contribution_label_1_avg, Clinical_contribution_label_1_avg])
+
+    # # Calculate mean attention weights for the correctly predicted label 0 (grade 4)
+    # MRI_contribution_label_0_correct_avg = df[df['True_Label'] == 0 and df['Predicted'] == 0]['Attention_Weight_MRI'].mean()
+    # Clinical_contribution_label_0_correct_avg = df[df['True_Label'] == 0 and df['Predicted'] == 0]['Attention_Weight_Clinical'].mean()
+    # modality_cont_label_0_correct_avg = np.array([MRI_contribution_label_0_correct_avg, Clinical_contribution_label_0_correct_avg])
+
+    # # Calculate mean attention weights for the correctly predicted label 1 (grade 2&3)
+    # MRI_contribution_label_1_correct_avg = df[df['True_Label'] == 1 and df['Predicted'] == 1]['Attention_Weight_MRI'].mean()
+    # Clinical_contribution_label_1_correct_avg = df[df['True_Label'] == 1 and df['Predicted'] == 1]['Attention_Weight_Clinical'].mean()
+    # modality_cont_label_1_correct_avg = np.array([MRI_contribution_label_1_correct_avg, Clinical_contribution_label_1_correct_avg])
+
+    # # Calculate mean attention weights for the correctly predicted samples
+    # MRI_contribution_correct_avg = df[(df['True_Label'] == 1 and df['Predicted'] == 1) or (df['True_Label'] == 0 and df['Predicted'] == 0)]['Attention_Weight_MRI'].mean()
+    # Clinical_contribution_correct_avg = df[(df['True_Label'] == 1 and df['Predicted'] == 1) or (df['True_Label'] == 0 and df['Predicted'] == 0)]['Attention_Weight_Clinical'].mean()
+    # modality_cont_correct_avg = np.array([MRI_contribution_correct_avg, Clinical_contribution_correct_avg])
+
+
+    # Squeeze weights to shape (N, modalities)
+    attention_weights = all_weights.squeeze(-1)
+    modality_cont_avg = attention_weights.mean(axis=0)
+
+    # Build DataFrame dynamically
+    columns = ['True_Label', 'Predicted'] + [f'Attn_{i}' for i in range(attention_weights.shape[1])]
+    df = pd.DataFrame(
+        np.column_stack([y_labels, y_predicted, attention_weights]),
+        columns=columns
+    )
+
+    # Helper to compute mean contributions
+    def get_means(mask):
+        return df.loc[mask, df.columns[2:]].mean().to_numpy()
+
+    # Masks
+    mask_label_0 = df['True_Label'] == 0
+    mask_label_1 = df['True_Label'] == 1
+    mask_correct_0 = (df['True_Label'] == 0) & (df['Predicted'] == 0)
+    mask_correct_1 = (df['True_Label'] == 1) & (df['Predicted'] == 1)
+    mask_correct = mask_correct_0 | mask_correct_1
+
+    # Compute means
     # Calculate mean attention weights for each label
-    MRI_contribution_label_0_avg = df[df['True_Label'] == 0]['Attention_Weight_MRI'].mean()
-    Clinical_contribution_label_0_avg = df[df['True_Label'] == 0]['Attention_Weight_Clinical'].mean()
-    modality_cont_label_0_avg = np.array([MRI_contribution_label_0_avg, Clinical_contribution_label_0_avg])
-
-    MRI_contribution_label_1_avg = df[df['True_Label'] == 1]['Attention_Weight_MRI'].mean()
-    Clinical_contribution_label_1_avg = df[df['True_Label'] == 1]['Attention_Weight_Clinical'].mean()
-    modality_cont_label_1_avg = np.array([MRI_contribution_label_1_avg, Clinical_contribution_label_1_avg])
-
-    # Calculate mean attention weights for the correctly predicted label 0 (grade 4)
-    MRI_contribution_label_0_correct_avg = df[df['True_Label'] == 0 & df['Predicted'] == 0]['Attention_Weight_MRI'].mean()
-    Clinical_contribution_label_0_correct_avg = df[df['True_Label'] == 0 & df['Predicted'] == 0]['Attention_Weight_Clinical'].mean()
-    modality_cont_label_0_correct_avg = np.array([MRI_contribution_label_0_correct_avg, Clinical_contribution_label_0_correct_avg])
-
-    # Calculate mean attention weights for the correctly predicted label 1 (grade 2&3)
-    MRI_contribution_label_1_correct_avg = df[df['True_Label'] == 1 & df['Predicted'] == 1]['Attention_Weight_MRI'].mean()
-    Clinical_contribution_label_1_correct_avg = df[df['True_Label'] == 1 & df['Predicted'] == 1]['Attention_Weight_Clinical'].mean()
-    modality_cont_label_1_correct_avg = np.array([MRI_contribution_label_1_correct_avg, Clinical_contribution_label_1_correct_avg])
-
+    modality_cont_label_0_avg = get_means(mask_label_0)
+    modality_cont_label_1_avg = get_means(mask_label_1)
+    # Calculate mean attention weights for the correctly predicted label 0
+    modality_cont_label_0_correct_avg = get_means(mask_correct_0)
+    # Calculate mean attention weights for the correctly predicted label 1
+    modality_cont_label_1_correct_avg = get_means(mask_correct_1)
     # Calculate mean attention weights for the correctly predicted samples
-    MRI_contribution_correct_avg = df[(df['True_Label'] == 1 & df['Predicted'] == 1) | (df['True_Label'] == 0 & df['Predicted'] == 0)]['Attention_Weight_MRI'].mean()
-    Clinical_contribution_correct_avg = df[(df['True_Label'] == 1 & df['Predicted'] == 1) | (df['True_Label'] == 0 & df['Predicted'] == 0)]['Attention_Weight_Clinical'].mean()
-    modality_cont_correct_avg = np.array([MRI_contribution_correct_avg, Clinical_contribution_correct_avg])
+    modality_cont_correct_avg = get_means(mask_correct)
+
+    return (
+        modality_cont_avg,
+        modality_cont_label_0_avg,
+        modality_cont_label_1_avg,
+        modality_cont_label_0_correct_avg,
+        modality_cont_label_1_correct_avg,
+        modality_cont_correct_avg
+    )
 
 
-    return modality_cont_avg, modality_cont_label_0_avg, modality_cont_label_1_avg, modality_cont_label_0_correct_avg, modality_cont_label_1_correct_avg, modality_cont_correct_avg
-
-
-def calculate_save_metrics_intermediate_2(config, modality, y_labels, y_predicted, training_time_spent, test_loss=None, all_weights=None)-> tuple[float, float, float, float, float]:   
+def calculate_save_metrics_intermediate_2(config, modality, y_labels, y_predicted, training_time_spent, test_loss=None, all_weights=None)-> Tuple[float, float, float, float, float]:   
     ''' This function takes two numpy array, one the labels and the other predicted value, and then calculates 
     the performance metrics and saves the reports on three files of .tex, .json, and .csv
 
@@ -1212,7 +1258,7 @@ def calculate_save_metrics_intermediate_2(config, modality, y_labels, y_predicte
     if all_weights is not None:
         modality_cont_avg, modality_cont_label_0_avg, modality_cont_label_1_avg, \
             modality_cont_label_0_correct_avg, modality_cont_label_1_correct_avg, \
-            modality_cont_correct_avg = Inter_2_calculate_avg_attn_weights(y_labels, y_predicted, all_weights)
+            modality_cont_correct_avg = calculate_avg_attn_weights(y_labels, y_predicted, all_weights)
     else:
         modality_cont_avg = None
         modality_cont_label_0_avg = None
@@ -1266,9 +1312,6 @@ def calculate_save_metrics_intermediate_2(config, modality, y_labels, y_predicte
             "test_loss": test_loss,
             "test_accuracy": test_accuracy, 
             "test_MCC": MCC,
-            #"modality_contribution_avg": modality_cont_avg,
-            #"modality_contribution_label_4_avg": modality_cont_label_0_avg,
-            #"modality_contribution_label_2&3_avg": modality_cont_label_1_avg,
             "confusion_matrix": conf_matrix,
             "grade 2&3 precision": report['Grade 2&3']['precision'],
             "grade 2&3 recall": report['Grade 2&3']['recall'],
@@ -1316,7 +1359,7 @@ def calculate_save_metrics_intermediate_2(config, modality, y_labels, y_predicte
     return test_accuracy, MCC, f1_w, recall_w, precision_w  # return the metrics for the fused model to be used in the loop over folds
 
 
-def calculate_save_metrics_early_1(config, modality, y_labels, y_predicted, training_time_spent, uni, test_loss=None)-> tuple[float, float, float, float, float]:   
+def calculate_save_metrics_early_1(config, modality, y_labels, y_predicted, training_time_spent, uni, test_loss=None)-> Tuple[float, float, float, float, float]:   
     ''' This function takes two numpy array, one the labels and the other predicted value, and then calculates 
     the performance metrics and saves the reports on three files of .tex, .json, and .csv
 
@@ -1469,7 +1512,7 @@ def calculate_save_metrics_early_1(config, modality, y_labels, y_predicted, trai
 
 
 
-def calculate_save_metrics_early_2(config, modality, y_labels, y_predicted, training_time_spent, test_loss=None) -> tuple[float, float, float, float, float]:   
+def calculate_save_metrics_early_2(config, modality, y_labels, y_predicted, training_time_spent, test_loss=None) -> Tuple[float, float, float, float, float]:   
     ''' This function takes two numpy array, one the labels and the other predicted value, and then calculates 
     the performance metrics and saves the reports on three files of .tex, .json, and .csv
 

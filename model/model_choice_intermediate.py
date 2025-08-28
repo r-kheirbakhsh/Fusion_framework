@@ -3,8 +3,9 @@
 
 '''
 
-from model.models_classes import Inter_1_concat, Inter_1_concat_attn, Inter_2_concat, Inter_2_concat_attn, \
-                                 Inter_2_bidirectional_crossattention, Inter_2_bi_crossattn_selfattn
+from model.models_classes import Inter_1_concat, Inter_1_concat_attn, Inter_1_gated_attn, \
+                                Inter_2_concat, Inter_2_concat_attn, Inter_2_bidirectional_crossattention, \
+                                Inter_2_bi_crossattn_selfattn
                                     
 
 def model_selection_intermediate(config): 
@@ -25,6 +26,9 @@ def model_selection_intermediate(config):
 
     elif config.fused_model == 'Inter_1_concat_attn':
         model = Inter_1_concat_attn(config=config)
+
+    elif config.fused_model == 'Inter_1_gated_attn':
+        model = Inter_1_gated_attn(config=config)
 
     elif config.fused_model == 'Inter_2_concat':
         model = Inter_2_concat(config=config)
