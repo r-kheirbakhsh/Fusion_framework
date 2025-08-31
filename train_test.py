@@ -5,7 +5,7 @@ from sklearn.model_selection import StratifiedKFold
 
 from trainer import Model
 from config import Config, parse_args
-from utils import slice_to_patient_dataset, prepare_dataset_split
+from utils import slice_to_patient_dataset, prepare_dataset_split, calculate_mean_std
 
 
 
@@ -25,9 +25,13 @@ def main(config):
     skf = StratifiedKFold(n_splits=config.num_folds, shuffle=True, random_state=config.seed)        
 
     global_time, global_acc, global_mcc, global_f1_weighted_avg, global_recall_weighted_avg, global_precision_weighted_avg = [], [], [], [], [], []
+    # Lists used for saving weights in attn-based models
+    global_modality_cont_avg, global_modality_cont_label_0_avg, global_modality_cont_label_1_avg = [], [], []
+    global_modality_cont_label_0_correct_avg, global_modality_cont_label_1_correct_avg, global_modality_cont_correct_avg = [], [], []
+
     # Loop through each fold
     for fold, (train_index, test_index) in enumerate(skf.split(dataset_patient_df, dataset_patient_df['WHO_grade'])):
-        #if fold >= 1:
+
         # Update the fold number in the config
         config.fold = fold  
         print(f'Fold {fold}/{config.num_folds-1} in progress...')
@@ -50,7 +54,19 @@ def main(config):
         print('=========================================================')
         print(f'Evaluation of {config.fusion_method} model on fold {fold} is in progress...')
         # Evaluate the model
-        acc, mcc, f1_w, recall_w, precision_w = model.evaluate(test_slice_df, training_time_spent)
+        if config.fusion_method in ['intermediate_1_fusion']:
+            acc, mcc, f1_w, recall_w, precision_w, modality_cont_avg,\
+                modality_cont_label_0_avg, modality_cont_label_1_avg,\
+                modality_cont_label_0_correct_avg, modality_cont_label_1_correct_avg,\
+                modality_cont_correct_avg = model.evaluate(test_slice_df, training_time_spent)
+            global_modality_cont_avg.append(modality_cont_avg)
+            global_modality_cont_label_0_avg.append(modality_cont_label_0_avg)
+            global_modality_cont_label_1_avg.append(modality_cont_label_1_avg)
+            global_modality_cont_label_0_correct_avg.append(modality_cont_label_0_correct_avg)
+            global_modality_cont_label_1_correct_avg.append(modality_cont_label_1_correct_avg)
+            global_modality_cont_correct_avg.append(modality_cont_correct_avg)
+        else:
+            acc, mcc, f1_w, recall_w, precision_w = model.evaluate(test_slice_df, training_time_spent)
 
         # Store results
         global_time.append(training_time_spent)
@@ -66,7 +82,16 @@ def main(config):
     print(f"Average MCC: {sum(global_mcc) / len(global_mcc)}")
     print(f"Average f1_weighted_avg: {sum(global_f1_weighted_avg) / len(global_f1_weighted_avg)}")
     print(f"Average recall_weighted_avg: {sum(global_recall_weighted_avg) / len(global_recall_weighted_avg)}")
-    print(f"Average precision_weighted_avg: {sum(global_precision_weighted_avg) / len(global_precision_weighted_avg)}")      
+    print(f"Average precision_weighted_avg: {sum(global_precision_weighted_avg) / len(global_precision_weighted_avg)}")
+
+    if config.fused_model in ['Inter_1_concat_attn']:
+        print('=========================================================')
+        print(f"Mean and Std of modality_cont_avg: {calculate_mean_std(global_modality_cont_avg)}")
+        print(f"Mean and Std of modality_cont_label_0_avg: {calculate_mean_std(global_modality_cont_label_0_avg)}")
+        print(f"Mean and Std of modality_cont_label_1_avg: {calculate_mean_std(global_modality_cont_label_1_avg)}")
+        print(f"Mean and Std of modality_cont_label_0_correct_avg: {calculate_mean_std(global_modality_cont_label_0_correct_avg)}")
+        print(f"Mean and Std of modality_cont_label_1_correct_avg: {calculate_mean_std(global_modality_cont_label_1_correct_avg)}")
+        print(f"Mean and Std of modality_cont_correct_avg: {calculate_mean_std(global_modality_cont_correct_avg)}")
 
     return
 

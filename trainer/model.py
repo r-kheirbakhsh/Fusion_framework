@@ -75,7 +75,7 @@ class Model:
         return
             
     
-    def evaluate(self, test_slice_df, training_time_spent)-> tuple[float, float, float, float, float]:
+    def evaluate(self, test_slice_df, training_time_spent)-> tuple:
         '''This function handles the evaluation process of the model on the test dataset.
         
         Args:
@@ -95,25 +95,24 @@ class Model:
 
         match self.config.fusion_method:
             case 'early_1_fusion':
-                acc, mcc, f1_w, recall_w, precision_w = self._test_early_1(test_slice_df, modality, 0, training_time_spent)
+                # acc, mcc, f1_w, recall_w, precision_w = self._test_early_1(test_slice_df, modality, 0, training_time_spent)
+                return self._test_early_1(test_slice_df, modality, 0, training_time_spent)
 
             case 'early_2_fusion':
-                acc, mcc, f1_w, recall_w, precision_w = self._test_early_2(test_slice_df, modality, training_time_spent)
+                return self._test_early_2(test_slice_df, modality, training_time_spent)
 
             case 'intermediate_1_fusion':
-                acc, mcc, f1_w, recall_w, precision_w = self._test_intermediate_1(test_slice_df, modality, training_time_spent)
+                return self._test_intermediate_1(test_slice_df, modality, training_time_spent)
 
             case 'intermediate_2_fusion':
-                acc, mcc, f1_w, recall_w, precision_w = self._test_intermediate_2(test_slice_df, modality, training_time_spent)
+                return self._test_intermediate_2(test_slice_df, modality, training_time_spent)
 
             case 'late_fusion':
-                acc, mcc, f1_w, recall_w, precision_w = self._test_late(test_slice_df, training_time_spent)
+                return self._test_late(test_slice_df, training_time_spent)
 
             case '-':
                 raise ValueError(f"Unknown fusion method: {self.config.fusion_method}")
                 return
-            
-        return acc, mcc, f1_w, recall_w, precision_w
             
     
     def _test_loop(self, model, test_dataloader)-> tuple[np.ndarray, np.ndarray, np.ndarray, float]:
@@ -156,15 +155,13 @@ class Model:
         with torch.no_grad():
             for inputs, labels in test_dataloader:
 
-                #inputs, labels = inputs.to(device), labels.to(device)
                 inputs = move_to_device(inputs, device)
                 labels = move_to_device(labels, device)
                 
                 if self.config.fused_model in ['Inter_2_concat_attn', 'Inter_1_concat_attn', 'Inter_1_gated_attn']:
                     outputs, attn_weights = model(inputs)
-                    # all_weights.append(attn_weights.detach().cpu())
                     attn_weights = torch.squeeze(attn_weights, 0)
-                    all_weights.append(attn_weights.detach().cpu()) #.numpy())
+                    all_weights.append(attn_weights.detach().cpu()) 
 
                 else:
                     outputs = model(inputs)
@@ -200,12 +197,6 @@ class Model:
         print(f"True labels shape: {y_labels.shape}, True labels type: {type(y_labels)}")
         print(f"Predicted shape: {y_outputs.shape}, Predicted type: {type(y_outputs)}")
 
-        # if self.config.fused_model in ['Inter_2_concat_attn', 'Inter_1_concat_attn']:
-        #     all_weights = torch.cat(all_weights, dim=0)
-        #     mean_weights = all_weights.mean(dim=0).squeeze()
-        #     print("Average modality importance:", mean_weights.numpy())
-        #     return y_labels, y_outputs, y_predicted, test_loss, all_weights
-
         if self.config.fused_model in ['Inter_2_concat_attn', 'Inter_1_concat_attn', 'Inter_1_gated_attn']:
             all_weights = np.array(all_weights)
             print(f"Attention weights shape: {all_weights.shape}", f"Attention weights type: {type(all_weights)}")
@@ -214,7 +205,7 @@ class Model:
             return y_labels, y_outputs, y_predicted, test_loss, all_weights
         
         else:
-            return y_labels, y_outputs, y_predicted, test_loss #, None
+            return y_labels, y_outputs, y_predicted, test_loss 
 
 
 ################################################ Code for Early_1 Fusion ################################################
@@ -525,10 +516,8 @@ class Model:
 
         y_labels, y_outputs, y_predicted, test_loss = self._test_loop(model, test_dataloader)
 
-        # calculate the metrics for the model and save the results in three file of .text, .json, and .csv
-        acc, mcc, f1_w, recall_w, precision_w = calculate_save_metrics_early_2(self.config, modality, y_labels, y_predicted, training_time_spent, test_loss)
-
-        return acc, mcc, f1_w, recall_w, precision_w 
+        # calculate the metrics for the model and save the results in three file of .text, .json, and .csv and return
+        return calculate_save_metrics_early_2(self.config, modality, y_labels, y_predicted, training_time_spent, test_loss)
     
      
 ################################################### End of code for Early_2 Fusion ################################################ 
@@ -564,14 +553,21 @@ class Model:
             case 2: criterion = nn.BCEWithLogitsLoss()  # OR nn.BCELoss()   For binary classification
             case 3: criterion = nn.CrossEntropyLoss()  # For multi-class classification
                     
-       
+    
         # Define optimizer with different learning rates
-        optimizer = optim.AdamW([
-            {'params': model.mri_encoders.parameters(), 'lr': self.config.lr_mri, 'weight_decay': self.config.lmbda},
-            {'params': model.clinical_encoder.parameters(), 'lr': self.config.lr_cl, 'weight_decay': self.config.lmbda},
-            {'params': model.modality_attention_separate.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda}, # for Inter_1_conat_attn
-            {'params': model.gated_mri_attention_shared.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda},
-            {'params': model.classifier.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda}
+        if 'Clinical' in self.config.modalities:
+            optimizer = optim.AdamW([
+                {'params': model.mri_encoders.parameters(), 'lr': self.config.lr_mri, 'weight_decay': self.config.lmbda},
+                {'params': model.clinical_encoder.parameters(), 'lr': self.config.lr_cl, 'weight_decay': self.config.lmbda},
+                {'params': model.modality_attention.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda}, 
+                # {'params': model.mri_attention_shared.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda},
+                {'params': model.classifier.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda}
+                ])
+        else:
+            optimizer = optim.AdamW([
+                {'params': model.mri_encoders.parameters(), 'lr': self.config.lr_mri, 'weight_decay': self.config.lmbda},
+                {'params': model.modality_attention.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda}, 
+                {'params': model.classifier.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda}
             ])
 
         if len(self.config.modalities) > 1:
@@ -592,7 +588,7 @@ class Model:
         return
 
 
-    def _test_intermediate_1(self, test_slice_df, modality, training_time_spent)-> tuple[float, float, float, float, float]:
+    def _test_intermediate_1(self, test_slice_df, modality, training_time_spent)-> tuple[float, float, float, float, float, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         '''This function is the testing function for the intermediate_1 fusion method
         
         Args:
@@ -605,6 +601,12 @@ class Model:
             f1_w (_type:float_): The weighted average of f1_score of the model on the test set
             recall_w (_type:float_): The weighted average of recall of the model on the test set
             precision_w (_type:float_): The weighted average of precision of the model on the test set
+            modality_cont_avg (_type:np.ndarray_): The average contribution of the modality to the final prediction
+            modality_cont_label_0_avg (_type:np.ndarray_): The average contribution of the modality to the final prediction for label 0
+            modality_cont_label_1_avg (_type:np.ndarray_): The average contribution of the modality to the final prediction for label 1
+            modality_cont_label_0_correct_avg (_type:np.ndarray_): The average contribution of the modality to the final prediction for label 0 when the prediction is correct
+            modality_cont_label_1_correct_avg (_type:np.ndarray_): The average contribution of the modality to the final prediction for label 1 when the prediction is correct
+            modality_cont_correct_avg (_type:np.ndarray_): The average contribution of the modality to the final prediction when the prediction is correct
 
         '''
         # Set the random seed for reproducibility
@@ -619,8 +621,7 @@ class Model:
         # Load the saved state_dict
         try:
             model.load_state_dict(torch.load(f'best_model_{self.config.fold}.pth' , weights_only = True))
-            # logging.info(f'loaded model: best_model_{config.fusion_method}_{modality}_{config.fused_model}_{axis_dic[config.axis]}_43_56_396_seed_{config.seed}.pth')
-        
+            
         except FileNotFoundError:
             print("Model checkpoint not found. Ensure the path to 'best_model.pth' is correct.")
             return
@@ -630,11 +631,8 @@ class Model:
         else:
             y_labels, y_outputs, y_predicted, test_loss = self._test_loop(model, test_dataloader)
 
-        # calculate the metrics for the model and save the results in three file of .text, .json, and .csv
-        acc, mcc, f1_w, recall_w, precision_w = calculate_save_metrics_intermediate_1(self.config, modality, y_labels, y_predicted, training_time_spent, test_loss)
+        return calculate_save_metrics_intermediate_1(self.config, modality, y_labels, y_predicted, training_time_spent, test_loss, all_weights)
 
-        return acc, mcc, f1_w, recall_w, precision_w
-    
 
 ############################################## End of code for Intermediate_1 Fusion #####################################
 
@@ -676,7 +674,7 @@ class Model:
         optimizer = optim.AdamW([
             {'params': model.mri_encoder.parameters(), 'lr': self.config.lr_mri, 'weight_decay': self.config.lmbda},
             {'params': model.clinical_encoder.parameters(), 'lr': self.config.lr_cl, 'weight_decay': self.config.lmbda},
-            {'params': model.modality_attention_separate.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda}, # for Inter_2_conat_attn
+            {'params': model.modality_attention.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda}, # for Inter_2_conat_attn
             {'params': model.classifier.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda}
             ])
 
@@ -734,10 +732,9 @@ class Model:
         else:
             y_labels, y_outputs, y_predicted, test_loss = self._test_loop(model, test_dataloader)
 
-        # calculate the metrics for the model and save the results in three file of .text, .json, and .csv
-        acc, mcc, f1_w, recall_w, precision_w  = calculate_save_metrics_intermediate_2(self.config, modality, y_labels, y_predicted, training_time_spent, test_loss, all_weights)
-
-        return acc, mcc, f1_w, recall_w, precision_w 
+        # calculate the metrics for the model and save the results in three file of .text, .json, and .csv and return
+        return calculate_save_metrics_intermediate_2(self.config, modality, y_labels, y_predicted, training_time_spent, test_loss, all_weights)
+  
     
     
 ############################################ End of code for Intermediate_2 Fusion ########################################
@@ -904,10 +901,8 @@ class Model:
             y_predicted_fused = late_fusion_function(self.config, pred_dic)
             
             # calculate the metrics for the late fused model and save the results in three file of .text, .json, and .csv
-            acc, mcc, f1_w, recall_w, precision_w = calculate_save_metrics_late(self.config, modality, y_labels, y_predicted_fused, multi, training_time_spent, t_loss) # y_labels is the y_labels for the first modality in config.modalities list 
-
-        return acc, mcc, f1_w, recall_w, precision_w
-    
+        return calculate_save_metrics_late(self.config, modality, y_labels, y_predicted_fused, multi, training_time_spent, t_loss) # y_labels is the y_labels for the first modality in config.modalities list 
+   
 
     def _predict_with_modality_specific_model(self, test_slice_df, modality)-> tuple[np.ndarray, np.ndarray, np.ndarray, float]:
         ''' This function takes datafarme of test and predict the labels for the specific 'modality' 
@@ -969,6 +964,4 @@ class Model:
                 print("Model checkpoint not found. Ensure the path to 'best_model.pth' is correct.")
                 return
             
-            y_labels, y_outputs, y_predicted, test_loss = self._test_loop(model, test_dataloader)
-
-            return y_labels, y_outputs, y_predicted, test_loss
+            return self._test_loop(model, test_dataloader)

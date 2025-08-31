@@ -955,7 +955,7 @@ def calculate_save_metrics_late(config, modality, y_labels, y_predicted, multi, 
 
 
 
-def calculate_save_metrics_intermediate_1(config, modality, y_labels, y_predicted, training_time_spent, test_loss=None, all_weights=None)-> Tuple[float, float, float, float, float]:   
+def calculate_save_metrics_intermediate_1(config, modality, y_labels, y_predicted, training_time_spent, test_loss=None, all_weights=None)-> Tuple[float, float, float, float, float, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:   
     ''' This function takes two numpy array, one the labels and the other predicted value, and then calculates 
     the performance metrics and saves the reports on three files of .tex, .json, and .csv
 
@@ -984,6 +984,12 @@ def calculate_save_metrics_intermediate_1(config, modality, y_labels, y_predicte
         f1_w (_type:float_): The weighted average of f1_score of the model on the test set
         recall_w (_type:float_): The weighted average of recall of the model on the test set
         precision_w (_type:float_): The weighted average of precision of the model on the test set
+        modality_cont_avg (_type:np.ndarray_): The average contribution of the modality to the final prediction
+        modality_cont_label_0_avg (_type:np.ndarray_): The average contribution of the modality to the final prediction for label 0
+        modality_cont_label_1_avg (_type:np.ndarray_): The average contribution of the modality to the final prediction for label 1
+        modality_cont_label_0_correct_avg (_type:np.ndarray_): The average contribution of the modality to the final prediction for label 0 when the prediction is correct
+        modality_cont_label_1_correct_avg (_type:np.ndarray_): The average contribution of the modality to the final prediction for label 1 when the prediction is correct
+        modality_cont_correct_avg (_type:np.ndarray_): The average contribution of the modality to the final prediction when the prediction is correct
 
     '''
 
@@ -1104,8 +1110,12 @@ def calculate_save_metrics_intermediate_1(config, modality, y_labels, y_predicte
     # Save the updated CSV
     updated_csv_df.to_csv(csv_file_path, index=False)
 
-    return test_accuracy, MCC, f1_w, recall_w, precision_w  # return the accuracy and MCC for the fused model to be used in the loop over folds
-
+    return (
+        test_accuracy, MCC, f1_w, recall_w, precision_w,
+        modality_cont_avg, modality_cont_label_0_avg, modality_cont_label_1_avg,
+        modality_cont_label_0_correct_avg, modality_cont_label_1_correct_avg,
+        modality_cont_correct_avg
+    )
 
 
 def calculate_avg_attn_weights(y_labels, y_predicted, all_weights)-> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -1204,6 +1214,28 @@ def calculate_avg_attn_weights(y_labels, y_predicted, all_weights)-> Tuple[np.nd
         modality_cont_label_1_correct_avg,
         modality_cont_correct_avg
     )
+
+
+def calculate_mean_std(attn_weights_list)-> Tuple[np.ndarray, np.ndarray]:
+    ''' This function calculates the mean of a list of np.ndarray
+    Args:
+        attn_weights_list (_type:list_): a list of np.ndarrays
+
+    Returns:
+        mean_array (_type:np.ndarray_): the mean of the input arrays
+        std_array (_type:np.ndarray_): the standard deviation of the input arrays
+
+    '''
+    # Stack and compute mean and std
+    stacked = np.stack(attn_weights_list)        # shape: (num_arrays, length)
+    mean_array = np.mean(stacked, axis=0)
+    std_array = np.std(stacked, axis=0)
+
+    # Round to 2 decimal places
+    mean_rounded = np.round(mean_array, 2)
+    std_rounded = np.round(std_array, 2)
+
+    return mean_rounded, std_rounded
 
 
 def calculate_save_metrics_intermediate_2(config, modality, y_labels, y_predicted, training_time_spent, test_loss=None, all_weights=None)-> Tuple[float, float, float, float, float]:   

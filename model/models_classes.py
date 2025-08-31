@@ -735,6 +735,35 @@ class GatedModalityAttentionShared(nn.Module):
         return fused, gates
 
 
+class MRIAttentionShared(nn.Module):
+    """
+    MRI attention weighted sum over modality features without any projection.
+    Expects every modality feature to have the same dimension (e.g., 1024 for MRI encoders).
+
+    """
+    def __init__(self, config, input_dim, gate_hidden=64):
+        super(MRIAttentionShared, self).__init__()
+        self.config = config
+
+        # Shared attention scorer
+        self.attn = nn.Sequential(
+            nn.Linear(input_dim, gate_hidden),
+            nn.Tanh(),
+            nn.Linear(gate_hidden, 1)  # scalar score per modality
+        )
+        # Initialize attention networks weights
+        init_weights(self.config, self.attn, init_type="kaiming")
+
+    def forward(self, feats):
+        feats = torch.stack(feats, dim=1)  # (B, M, hidden_dim)
+
+        scores = self.attn(feats)               # (B, M, 1)
+        attn_weights = torch.softmax(scores, dim=1)  # (B, M, 1)
+
+        fused = torch.sum(attn_weights * feats, dim=1)  # (B, hidden_dim)
+        return fused, attn_weights
+
+
 class GatedMRIAttentionShared(nn.Module):
     """
     Gated sum over modality features without any projection.
@@ -974,12 +1003,13 @@ class Inter_1_gated_attn (nn.Module):
                 raise ValueError(f"Unknown Clinical model type: {self.config.cl_model}")  
 
         # ----- Gated Attention Fusion of MRI -----
-        self.gated_mri_attention_shared = GatedMRIAttentionShared(self.config, input_dim=1024, gate_hidden=64) # dimension for the features encoded by DenseNet121/swin_b
+        # self.gated_mri_attention_shared = GatedMRIAttentionShared(self.config, input_dim=1024, gate_hidden=64) # dimension for the features encoded by DenseNet121/swin_b
         # self.gated_mri_attention = GatedMRIAttentionSeparate(self.config, input_dim=1024, gate_hidden=64)
+        self.mri_attention_shared = MRIAttentionShared(self.config, input_dim=1024, gate_hidden=64)
 
         # ----- Attention Fusion of MRI and Clinical -----
-        # self.modality_attention = ModalityAttention(self.config, input_dims, hidden_dim=256)
-        self.modality_attention_separate = ModalityAttentionSeparate(self.config, input_dims, hidden_dim=256)
+        self.modality_attention_shared = ModalityAttention(self.config, input_dims, hidden_dim=256)
+        # self.modality_attention_separate = ModalityAttentionSeparate(self.config, input_dims, hidden_dim=256)
 
         # ----- Classifier -----
         self.classifier = nn.Sequential(
@@ -1010,7 +1040,7 @@ class Inter_1_gated_attn (nn.Module):
             MRI_features.append(feat)
 
         # Gated attention fusion of MRI modalities
-        fused_mri_features, mri_gate_weights = self.gated_mri_attention_shared(MRI_features)
+        fused_mri_features, mri_gate_weights = self.mri_attention_shared(MRI_features)
         features.append(fused_mri_features)
 
         # Clinical feature
@@ -1020,7 +1050,7 @@ class Inter_1_gated_attn (nn.Module):
             features.append(clinical_feat)
 
         # Attention fusion
-        fused, attn_weights = self.modality_attention_separate(features)
+        fused, attn_weights = self.modality_attention_shared(features)
 
         # Classify
         out = self.classifier(fused)
@@ -1030,37 +1060,6 @@ class Inter_1_gated_attn (nn.Module):
 ############################################ End of Inter_1_gated_attn Model ###########################################
 
 ################################################# Inter_2_concat_attn ##################################################
-
-# class GatedModalityAttention(nn.Module):
-#     def __init__(self, config, input_dims, hidden_dim=256):
-#         super(GatedModalityAttention, self).__init__()
-#         # Project each modality into same hidden_dim space
-#         self.projections = nn.ModuleList([
-#             nn.Linear(in_dim, hidden_dim) for in_dim in input_dims
-#         ])
-#         # Gating network (independent sigmoid gates per modality)
-#         self.gates = nn.Sequential(
-#             nn.Linear(hidden_dim, 64),
-#             nn.ReLU(),
-#             nn.Linear(64, 1),
-#             nn.Sigmoid()   # gate between 0 and 1
-#         )
-
-#     def forward(self, feats):
-#         # feats = list of modality feature tensors, each (B, in_dim)
-#         proj_feats = [proj(f) for proj, f in zip(self.projections, feats)]  
-#         proj_feats = torch.stack(proj_feats, dim=1)  # (B, M, hidden_dim)
-
-#         # Compute gates
-#         gates = self.gates(proj_feats)   # (B, M, 1), each value in [0,1]
-
-#         # Apply gates to modality embeddings
-#         gated_feats = gates * proj_feats # (B, M, hidden_dim)
-
-#         # Fuse (sum or mean) across modalities
-#         fused = torch.sum(gated_feats, dim=1)  # (B, hidden_dim)
-
-#         return fused, gates
 
 
 class Inter_2_concat_attn(nn.Module):
@@ -1109,8 +1108,8 @@ class Inter_2_concat_attn(nn.Module):
             
 
         # ----- Attention Fusion -----
-        # self.modality_attention = ModalityAttention(self.config, input_dims, hidden_dim=256)
-        self.modality_attention_separate = ModalityAttentionSeparate(self.config, input_dims, hidden_dim=256)
+        self.modality_attention = ModalityAttention(self.config, input_dims, hidden_dim=256)
+        # self.modality_attention_separate = ModalityAttentionSeparate(self.config, input_dims, hidden_dim=256)
         # self.gated_modality_attention = GatedModalityAttention(self.config, input_dims, hidden_dim=256)
 
         # ----- Classifier -----
@@ -1146,7 +1145,7 @@ class Inter_2_concat_attn(nn.Module):
             feats.append(clinical_feat)
 
         # Attention fusion
-        fused, attn_weights = self.modality_attention_separate(feats)  # fused: Tensor of (B,256), attn_weights: Tensor of (B,M,1) M is the number of modalities
+        fused, attn_weights = self.modality_attention(feats)  # fused: Tensor of (B,256), attn_weights: Tensor of (B,M,1) M is the number of modalities
         # fused, gates = self.gated_modality_attention(feats)
         # print(f"Fused feature shape: {fused.shape}", f"Fused feature type: {type(fused)}")
         # print(f"Attention weights shape: {attn_weights.shape}", f"Attention weights type: {type(attn_weights)}")
