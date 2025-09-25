@@ -559,14 +559,15 @@ class Model:
             optimizer = optim.AdamW([
                 {'params': model.mri_encoders.parameters(), 'lr': self.config.lr_mri, 'weight_decay': self.config.lmbda},
                 {'params': model.clinical_encoder.parameters(), 'lr': self.config.lr_cl, 'weight_decay': self.config.lmbda},
-                {'params': model.modality_attention.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda}, 
-                # {'params': model.mri_attention_shared.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda},
+                {'params': model.modality_attention.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda},
+                # {'params': model.gated_modality_attention.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda}, 
                 {'params': model.classifier.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda}
                 ])
         else:
             optimizer = optim.AdamW([
                 {'params': model.mri_encoders.parameters(), 'lr': self.config.lr_mri, 'weight_decay': self.config.lmbda},
-                {'params': model.modality_attention.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda}, 
+                {'params': model.modality_attention.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda},
+                # {'params': model.gated_modality_attention.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda},
                 {'params': model.classifier.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda}
             ])
 

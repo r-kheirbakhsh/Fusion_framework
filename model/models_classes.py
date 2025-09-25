@@ -82,7 +82,7 @@ def init_classifier_head(config, layer):
 
 ###################################### End of Initialization functions ########################################
 
-########################################## Definition for AutoInt #############################################
+########################################## Definition of AutoInt #############################################
 
 class AutoIntModel(nn.Module):
     def __init__(self, config):
@@ -159,7 +159,7 @@ class AutoIntModel_intermediate(nn.Module):
         return x
 
 
-######################################## End of Definition for AutoInt ####################################
+######################################## End of Definition of AutoInt ####################################
 
 ################################################# MLP Models ##############################################
 
@@ -902,7 +902,7 @@ class Inter_1_concat_attn (nn.Module):
 
         # ----- Attention Fusion -----
         self.modality_attention = ModalityAttention(self.config, input_dims, hidden_dim=256)
-        #self.gated_modality_attention = GatedModalityAttentionShared(self.config, input_dims, hidden_dim=200)
+        # self.gated_modality_attention = GatedModalityAttentionShared(self.config, input_dims, hidden_dim=256)
 
         # ----- Classifier -----
         self.classifier = nn.Sequential(
@@ -938,14 +938,14 @@ class Inter_1_concat_attn (nn.Module):
 
         # Attention fusion
         fused, attn_weights = self.modality_attention(features)
-        #fused, gates = self.gated_modality_attention(features)
+        # fused, gates = self.gated_modality_attention(features)
 
         # Classify
         out = self.classifier(fused)
         return out, attn_weights
         #return out, gates
 
-############################################### End of Inter_1_concat_attn ####################################################
+############################################### End of Inter_1_concat_attn Model ####################################################
 
 ################################################# Inter_1_gated_attn Model ####################################################
 
@@ -1059,7 +1059,7 @@ class Inter_1_gated_attn (nn.Module):
 
 ############################################ End of Inter_1_gated_attn Model ###########################################
 
-################################################# Inter_2_concat_attn ##################################################
+################################################# Inter_2_concat_attn Model ##################################################
 
 
 class Inter_2_concat_attn(nn.Module):

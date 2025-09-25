@@ -176,7 +176,7 @@ class nn_Trainer_intermediate:
 
                     total += labels.size(0)
                     correct += (predicted == labels).sum().item()
-                    labels_val_list.append(labels.cpu().detach().numpy())               
+                    labels_val_list.append(labels.cpu().detach().numpy())      # .detach() is redundant
                     predicted_val_list.append(predicted.cpu().detach().numpy()) 
 
             
@@ -204,6 +204,13 @@ class nn_Trainer_intermediate:
                 best_val_loss = val_loss
                 patience_counter = 0  # reset counter if improvement
                 torch.save(self.model.state_dict(), best_model_path) 
+                # To resume training properly, save optimizer state as well
+                # torch.save({
+                #     'epoch': epoch,
+                #     'model_state': self.model.state_dict(),
+                #     'optimizer_state': self.optimizer.state_dict(),
+                #     'val_loss': best_val_loss
+                # }, best_model_path)
                 print(f"Best model saved with validation loss: {val_loss:.5f}")
 
             else:
