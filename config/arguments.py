@@ -5,7 +5,7 @@ def parse_args():
     args = argparse.ArgumentParser(description='Modality fusion framework')
     
     args.add_argument('--project_name', default=None, type=str)
-    args.add_argument('--fusion_method', default='early_concat_fusion', type=str) # e.g. early_concat_fusion
+    args.add_argument('--fusion_method', default='early_concat_fusion', type=str) # it consists of ['early_1_fusion', 'early_2_fusion', 'intermediate_1_fusion', 'intermediate_2_fusion', 'late_fusion']
     args.add_argument('--dataset_csv_path', default=None, type=str)   # the path to the csv file containing the metadata of each slice (columns: ID,slice_name,sex,age,WHO_grade,final_diagnosis,MGMT_status,1p/19q,IDH)
     args.add_argument('--train_csv_path', default=None, type=str)
     args.add_argument('--val_csv_path', default=None, type=str)
@@ -16,9 +16,9 @@ def parse_args():
     args.add_argument('--axis', default=2, choices=[0,1,2], type=int)    # axis of the slices -> 0: Sagittal, 1: Coronal, 2: Axial
     args.add_argument('--modalities', nargs='+', type=str, help="List of modalities for late fuaion") # e.g. ['T1_bias', 'T2_bias', 'Clinical']
     args.add_argument('--scale_clinical_modality', default='Minmax', type=str) # e.g. Minmxa, Normalize   
-    args.add_argument('--mri_model', default="DenseNet121", type=str) # the architecture of NN for MRI modalities’ feature extraction phase, at the moment choices=['DenseNet121']
-    args.add_argument('--cl_model', default="MLP", type=str) # the architecture of NN for the Clinical modality’s feature extraction phase, at the moment choices=['MLP']   
-    args.add_argument('--fused_model', default="MLP", type=str) # the model for fusion
+    args.add_argument('--mri_model', default="DenseNet121", type=str) # the architecture of NN for MRI encoder
+    args.add_argument('--cl_model', default="AutoInt", type=str) # the architecture of NN for the Clinical encoder
+    args.add_argument('--fused_model', default="MLP", type=str) # the model for fusion of the modalities: 
     args.add_argument('--pretrained', default=0, type=int)   # pretrained mri_model: 1, non-pretrained mri_model: 0 
     args.add_argument('--lr_mri', default=1e-6, type=float)   # learning rate for mri_model
     args.add_argument('--lr_cl', default=1e-6, type=float)   # learning rate for cl_model
