@@ -175,7 +175,7 @@ class nn_Trainer_intermediate:
             
             val_loss /= len(self.val_dataloader)
             val_accuracy = correct / total  
-            val_mcc = matthews_corrcoef(np.concatenate(labels_val_list), np.concatenate(predicted_val_list))  # added for mcc
+            val_mcc = matthews_corrcoef(np.concatenate(labels_val_list), np.concatenate(predicted_val_list))  
 
             val_losses.append(val_loss)
             val_accuracies.append(val_accuracy)

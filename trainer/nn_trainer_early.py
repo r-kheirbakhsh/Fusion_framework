@@ -1,6 +1,5 @@
 import torch
 import wandb
-from torchmetrics.classification import BinaryMatthewsCorrCoef, MulticlassMatthewsCorrCoef, BinaryAccuracy, MulticlassAccuracy
 from sklearn.metrics import matthews_corrcoef
 import numpy as np
 
@@ -124,7 +123,6 @@ class nn_Trainer_early:
             labels_train_list = []
             predicted_train_list = []
 
-            #for batch_idx, (inputs, labels) in enumerate(train_dataloader):
             for inputs, labels in self.train_dataloader:
 
                 inputs = move_to_device(inputs, self.device)

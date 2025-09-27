@@ -1,12 +1,8 @@
-'''
-    This file containes the function that chooses the model for late fusion pipeline
-
-'''
 
 from pytorch_tabular.models.autoint import AutoIntConfig
 from pytorch_tabular.models.common.heads import LinearHeadConfig
 
-from model.models_classes import init_weights, AutoIntModel, MLP_1024_512_256_128, CustomDenseNet121, CustomSwin_b, Inter_1_concat
+from model.models_classes import init_weights, AutoIntModel, MLP_1024_512_256_128, CustomDenseNet121, Inter_1_concat
 
 
 
@@ -58,11 +54,8 @@ def model_selection_early(config, model_type):
     elif model_type == 'denseNet121':
         model = CustomDenseNet121(config, in_channels=1, with_head=1)
 
-    elif model_type == 'swin_b':
-        model = CustomSwin_b(config, in_channels=1, with_head=1)
-
-    elif model_type == 'Inter_1_concat':        
-        model = Inter_1_concat(config=config)    
+    elif model_type == 'Inter_1_concat':
+        model = Inter_1_concat(config=config)
 
     else:
         raise ValueError(f"Unknown model type: {model_type}")

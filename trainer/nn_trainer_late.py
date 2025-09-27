@@ -6,7 +6,7 @@ from sklearn.metrics import matthews_corrcoef
 
 
 class nn_Trainer_late:
-    '''The trainer class for Late fusion pipeline nas feature extraction phase of Early_1 fusion
+    '''The trainer class for Late fusion pipeline and feature extraction phase of ELF fusion
     
     '''
     def __init__(self, model, modality, criterion, optimizer, config, device, train_dataloader, val_dataloader):
@@ -76,7 +76,7 @@ class nn_Trainer_late:
         
             # Track hyperparameters and run metadata
             config= {
-                'dataset': f'{axis_dic[self.config.axis]}s_43_56_396_{self.config.seed}_{self.config.fold}',
+                'dataset': f'{axis_dic[self.config.axis]}_43_56_396_{self.config.seed}_{self.config.fold}',
                 'fusion strategy': self.config.fusion_strategy,
                 'modality': self.modality, 
                 'number of classes': self.config.num_class,

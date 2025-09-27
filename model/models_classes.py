@@ -1,7 +1,6 @@
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torchvision.models import densenet121, DenseNet121_Weights
 from pytorch_tabular.models.autoint import AutoIntBackbone, AutoIntConfig
 from pytorch_tabular.models.common.heads import blocks 
@@ -23,10 +22,9 @@ def set_seed(config):
 ############################ Initialization functions #####################################
 
 def init_weights(config, model, init_type="kaiming"):
-    '''
-    Apply custom initialization to all layers of a model
-    Supports: kaiming, xavier, normal
-    Works on MLPs, CNNs, and Transformer/Attention blocks
+    ''' Apply custom initialization to all layers of a model
+        Supports: kaiming, xavier, normal
+        Works on MLPs, CNNs, and Transformer/Attention blocks
     '''
     # Set the seed
     set_seed(config)
@@ -66,8 +64,8 @@ def init_weights(config, model, init_type="kaiming"):
 
 
 def init_classifier_head(config, layer):
-    '''
-    Apply Kaiming_unkform initialization of the classifier of a model
+    '''Apply Kaiming_uniform initialization of the classifier of a model
+
     '''
     # Set the seed
     set_seed(config)
@@ -111,7 +109,7 @@ class AutoIntModel(nn.Module):
         """
         #print(x)
         x_cat = x[:, 0].unsqueeze(1).long()     # sex, categorical
-        x_cont = x[:, 1].unsqueeze(1).float()   # age age and the rest of continuous features, continuous  .squeeze(1)
+        x_cont = x[:, 1].unsqueeze(1).float()   # age and the rest of continuous features, continuous  .squeeze(1)
        
         x_dict = {
             "categorical": x_cat,
@@ -213,7 +211,7 @@ class MLP_1024_512_256_128(nn.Module):
 
 ############################################# Inter_1_concat Model #######################################
 
-# Define intermediate_1 fusion architecture
+# Define ISF fusion architecture
 class Inter_1_concat (nn.Module):
     def __init__ (self, config):
         super(Inter_1_concat, self).__init__()
@@ -315,7 +313,7 @@ class Inter_1_concat (nn.Module):
 
 ################################################## Inter_2_concat Model ############################################
 
-# Define intermediate fusion architecture
+# Define IMF fusion architecture
 class Inter_2_concat (nn.Module):
     def __init__ (self, config):
         super(Inter_2_concat, self).__init__()
@@ -483,7 +481,7 @@ class CustomDenseNet121(nn.Module):
 
 ############################################ End of custom denseNet121 ############################################
 
-################################################### Modality weighting Block ###################################################
+################################################### Modality Weighting Block ###################################################
 
 
 class ModalityAttention(nn.Module):
@@ -524,10 +522,11 @@ class ModalityAttention(nn.Module):
         return fused, attn_weights
 
 
-################################################ End of Modality weighting Block ################################################
+################################################ End of Modality Weighting Block ################################################
 
 ############################################### Inter_1_concat_attn Model ###############################################
 
+# Define ISF fusion with Modality Weighting Block (MWB)
 class Inter_1_concat_attn (nn.Module):
     def __init__ (self, config):
         super(Inter_1_concat_attn, self).__init__()
@@ -613,11 +612,9 @@ class Inter_1_concat_attn (nn.Module):
 
         # Attention fusion
         fused, attn_weights = self.modality_attention(features)
-        # fused, gates = self.gated_modality_attention(features)
 
         # Classify
         out = self.classifier(fused)
         return out, attn_weights
-        #return out, gates
 
 ############################################### End of Inter_1_concat_attn Model ####################################################

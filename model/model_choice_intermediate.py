@@ -1,11 +1,5 @@
-'''
-    This file containes the function that chooses the arcitecture of the CNN model for interediate fusion pipeline
 
-'''
-
-from model.models_classes import Inter_1_concat, Inter_1_concat_attn, Inter_1_gated_attn, \
-                                Inter_2_concat, Inter_2_concat_attn, Inter_2_bidirectional_crossattention, \
-                                Inter_2_bi_crossattn_selfattn
+from model.models_classes import Inter_1_concat, Inter_1_concat_attn, Inter_2_concat
                                     
 
 def model_selection_intermediate(config): 
@@ -27,20 +21,8 @@ def model_selection_intermediate(config):
     elif config.fused_model == 'Inter_1_concat_attn':
         model = Inter_1_concat_attn(config=config)
 
-    elif config.fused_model == 'Inter_1_gated_attn':
-        model = Inter_1_gated_attn(config=config)
-
     elif config.fused_model == 'Inter_2_concat':
         model = Inter_2_concat(config=config)
-
-    elif config.fused_model == 'Inter_2_concat_attn':
-        model = Inter_2_concat_attn(config=config)
-
-    elif config.fused_model == 'Inter_2_bidirectional_crossattention':
-        model = Inter_2_bidirectional_crossattention(config=config)
-
-    elif config.fused_model == 'Inter_2_bi_crossattn_selfattn':
-        model = Inter_2_bi_crossattn_selfattn(config=config)
 
     else:
         raise ValueError(f"Unknown model type: {config.fused_model}")

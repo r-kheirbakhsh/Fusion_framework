@@ -252,7 +252,7 @@ class Model:
         print('=========================================================')
         print(f'Evaluation of models for feature extraction on fold {self.config.fold} is in progress...')
         for modality in self.config.modalities:
-            self._test_early_1(test_slice_df, modality, 1, training_time_dict[modality])
+            self._test_ELF(test_slice_df, modality, 1, training_time_dict[modality])
             print(f'Evaluation of the model for feature extraction of {modality} modality is finished and the results recorded in .text, .json, and on the CSV file')
 
         # Training phase for early fused features
@@ -265,7 +265,7 @@ class Model:
         else:
             modality = self.config.modalities[0]
 
-        self._train_model_early_1(train_slice_df, val_slice_df, modality, 0)
+        self._train_model_ELF(train_slice_df, val_slice_df, modality, 0)
 
         print('=========================================================')
         print('Training the model for ELF fusion strategy completed.')
