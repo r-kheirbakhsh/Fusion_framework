@@ -55,7 +55,7 @@ def _transform (image, pretrained, do, modality):
         
 
 class UCSFslice_late_fusion(Dataset):
-    '''UCSFslice_late_fusion
+    '''UCSFslice_late_fusion for LMV and LPA fusion strategy, and also is used for ELF fusion strategy
     Args:
         Dataset: Parent torch dataset class
     '''
@@ -131,7 +131,7 @@ class UCSFslice_late_fusion(Dataset):
             
             tabular_tensor = torch.tensor(tabular_np, dtype=torch.float32)
 
-            # return tabular_tensor, labe_tensor
+            # return tabular(tensor) and label(tensor)
             return tabular_tensor, label_tensor
         
         else:
@@ -150,5 +150,5 @@ class UCSFslice_late_fusion(Dataset):
 
             image_tensor = _transform(img, self.config.pretrained, self.transformation, self.modality)
 
-            # return image_tensor, labe_tensor
+            # return image(tensor) and label(tensor)
             return image_tensor, label_tensor

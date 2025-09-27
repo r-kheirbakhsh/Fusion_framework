@@ -18,7 +18,7 @@ def parse_args():
     args.add_argument('--scale_clinical_modality', default='Minmax', type=str) # e.g. Minmxa, Normalize   
     args.add_argument('--mri_model', default="DenseNet121", type=str) # the architecture of NN for MRI encoder
     args.add_argument('--cl_model', default="AutoInt", type=str) # the architecture of NN for the Clinical encoder
-    args.add_argument('--fused_model', default="MLP", type=str) # the model for fusion of the modalities: 
+    args.add_argument('--fused_model', default="MLP", type=str) # the model for fusion of the modalities it consists of ['MLP', 'AutoInt', 'dneseNet121', 'Inter_1_concat', 'Inter_2_concat', 'Inter_1_concat_attn']
     args.add_argument('--pretrained', default=0, type=int)   # pretrained mri_model: 1, non-pretrained mri_model: 0 
     args.add_argument('--lr_mri', default=1e-6, type=float)   # learning rate for mri_model
     args.add_argument('--lr_cl', default=1e-6, type=float)   # learning rate for cl_model

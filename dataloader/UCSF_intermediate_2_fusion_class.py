@@ -3,10 +3,9 @@ import os
 from torch.utils.data import Dataset
 import numpy as np
 import torch
-import cv2
 from torchvision.transforms import v2
 
-from dataloader.transfromation import CustomCompose, scale_mri_image
+from dataloader.transfromation import scale_mri_image
 
  
  
@@ -67,7 +66,7 @@ def _transform(mri_multichannel, pretrained, do, list_of_mri_modalities):
 
 
 class UCSFslice_intermediate_2_fusion(Dataset):
-    '''UCSFslice_intermediate_2_fusion
+    '''UCSFslice_intermediate_2_fusion for IMF fusion strategy
     Args:
         Dataset: Parent torch dataset class
     '''
@@ -169,7 +168,6 @@ class UCSFslice_intermediate_2_fusion(Dataset):
             image_tensor = _transform(fused_image, self.config.pretrained, self.transformation, list_of_mri_modalities)
 
             data_modalities_dict_tensor['MRI'] = image_tensor
-
 
         # return dictionary of tensors of modalities in the config.modalities list and labe_tensor
         return data_modalities_dict_tensor, label_tensor

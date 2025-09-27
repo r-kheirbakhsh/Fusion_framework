@@ -43,7 +43,7 @@ def _transform (mri_modalities_dict, do):
         
 
 class UCSFslice_early_2_fusion(Dataset):
-    '''UCSFslice_early_2_fusion
+    '''UCSFslice_early_2_fusion for ERF fusion strategy
     Args:
         Dataset: Parent torch dataset class
     '''

@@ -21,14 +21,14 @@ def _transform (mri_modalities_dict, pretrained, do):
     '''
     if pretrained == 1:
         transform_2 = CustomCompose(
-                resize=(224, 224),  # Resize to 224x224
+                resize=(224, 224),  
                 vert_flip_th=0.0,
                 hor_flip_th=0.0,
                 rotation_degree=0       
         )
 
         transform_1 = CustomCompose(
-                resize=(224, 224),  # Resize to 224x224
+                resize=(224, 224),  
                 vert_flip_th=0.5,
                 hor_flip_th=0.5,
                 rotation_degree=20
@@ -65,7 +65,7 @@ def _transform (mri_modalities_dict, pretrained, do):
         
 
 class UCSFslice_intermediate_1_fusion(Dataset):
-    '''UCSFslice_intermediate_1_fusion
+    '''UCSFslice_intermediate_1_fusion for ISF fusion strategy
     Args:
         Dataset: Parent torch dataset class
     '''
