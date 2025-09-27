@@ -52,9 +52,9 @@ def main(config):
 
         # Testing phase
         print('=========================================================')
-        print(f'Evaluation of {config.fusion_method} model on fold {fold} is in progress...')
+        print(f'Evaluation of {config.fusion_strategy} model on fold {fold} is in progress...')
         # Evaluate the model
-        if config.fusion_method in ['intermediate_1_fusion']:
+        if config.fusion_strategy in ['ISF']:
             acc, mcc, f1_w, recall_w, precision_w, modality_cont_avg,\
                 modality_cont_label_0_avg, modality_cont_label_1_avg,\
                 modality_cont_label_0_correct_avg, modality_cont_label_1_correct_avg,\

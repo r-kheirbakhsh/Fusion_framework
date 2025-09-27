@@ -56,7 +56,7 @@ def probability_averaging(output_list)->np.array:
 
 
 
-def late_fusion_function(config, pred_dic)->np.array:
+def late_fusion_function(config, pred_dic)-> np.array:
     ''' This function takes a dictionary containing the predictions of different models and returns the late 
     fused prediction.
 

@@ -66,7 +66,7 @@ class nn_Trainer_intermediate:
             # Track hyperparameters and run metadata
             config= {
                 'dataset': f'{axis_dic[self.config.axis]}_43_56_396_{self.config.seed}_{self.config.fold}',
-                'fusion method': self.config.fusion_method,
+                'fusion strategy': self.config.fusion_strategy,
                 'modality': self.modality, 
                 'number of classes': self.config.num_class,
                 'architecture': self.config.fused_model,
@@ -90,7 +90,7 @@ class nn_Trainer_intermediate:
 
         best_val_loss = float('inf')
         patience_counter = 0  # initialize early stopping counter
-        best_model_path = f'best_model_{self.config.fold}.pth' # BE CARFUL WHERE YOU SAVE THE BEST MODEL, YOU SHOULD UPLOAD WEIGHTS IN TEST FROM HERE!
+        best_model_path = f'best_model_{self.config.fold}.pth' 
 
         # Training loop
         for epoch in range(n_epochs):
@@ -103,25 +103,21 @@ class nn_Trainer_intermediate:
             predicted_train_list = []
 
 
-            #for batch_idx, (inputs, labels) in enumerate(train_dataloader):
             for inputs, labels in self.train_dataloader:
-                #inputs, labels = inputs.to(self.device), labels.to(self.device)
+
                 inputs = move_to_device(inputs, self.device)
                 labels = move_to_device(labels, self.device)
         
                 self.optimizer.zero_grad()
-                if self.config.fused_model in ['Inter_2_concat_attn', 'Inter_1_concat_attn', 'Inter_1_gated_attn']:
+                if self.config.fused_model in ['Inter_1_concat_attn']:
                     outputs, attn = self.model(inputs)
                 else:
                     outputs = self.model(inputs)
 
-                if self.config.num_class == 2:
-                    labels = labels.float()
-                    outputs = torch.squeeze(outputs)  # Remove the extra dimension [batch_size, 1] -> [batch_size]
-                    predicted = torch.round(torch.sigmoid(outputs))  # for Binary classification
-                else:
-                    _, predicted = torch.max(outputs, 1)  # for Multi-class classification
-            
+                labels = labels.float()
+                outputs = torch.squeeze(outputs)  # Remove the extra dimension [batch_size, 1] -> [batch_size]
+                predicted = torch.round(torch.sigmoid(outputs))  # for Binary classification
+
                 loss = self.criterion(outputs, labels)
 
                 loss.backward()
@@ -137,8 +133,8 @@ class nn_Trainer_intermediate:
            
     
             train_loss /= len(self.train_dataloader)  # it is the average loss for each batch
-            train_accuracy = correct / total # total (number of instances in the dataloader) is correct, len(self.train_dataloader) is the number of batches in the dataloader
-            train_mcc = matthews_corrcoef(np.concatenate(labels_train_list), np.concatenate(predicted_train_list))  # added for mcc
+            train_accuracy = correct / total 
+            train_mcc = matthews_corrcoef(np.concatenate(labels_train_list), np.concatenate(predicted_train_list))  
 
             train_losses.append(train_loss)
             train_accuracies.append(train_accuracy)
@@ -158,17 +154,14 @@ class nn_Trainer_intermediate:
                     inputs = move_to_device(inputs, self.device)
                     labels = move_to_device(labels, self.device)
 
-                    if self.config.fused_model in ['Inter_2_concat_attn', 'Inter_1_concat_attn', 'Inter_1_gated_attn']:
+                    if self.config.fused_model in ['Inter_1_concat_attn']:
                         outputs, attn = self.model(inputs)
                     else:
                         outputs = self.model(inputs)
 
-                    if self.config.num_class == 2:
-                        labels = labels.float()
-                        outputs = torch.squeeze(outputs) # Remove the extra dimension [batch_size, 1] -> [batch_size]
-                        predicted = torch.round(torch.sigmoid(outputs))  # Binary classification
-                    else:
-                        _, predicted = torch.max(outputs, 1)  # Multi-class classification
+                    labels = labels.float()
+                    outputs = torch.squeeze(outputs) # Remove the extra dimension [batch_size, 1] -> [batch_size]
+                    predicted = torch.round(torch.sigmoid(outputs))  # Binary classification
 
                     loss = self.criterion(outputs, labels)
 
@@ -176,7 +169,7 @@ class nn_Trainer_intermediate:
 
                     total += labels.size(0)
                     correct += (predicted == labels).sum().item()
-                    labels_val_list.append(labels.cpu().detach().numpy())      # .detach() is redundant
+                    labels_val_list.append(labels.cpu().detach().numpy())
                     predicted_val_list.append(predicted.cpu().detach().numpy()) 
 
             
@@ -204,13 +197,6 @@ class nn_Trainer_intermediate:
                 best_val_loss = val_loss
                 patience_counter = 0  # reset counter if improvement
                 torch.save(self.model.state_dict(), best_model_path) 
-                # To resume training properly, save optimizer state as well
-                # torch.save({
-                #     'epoch': epoch,
-                #     'model_state': self.model.state_dict(),
-                #     'optimizer_state': self.optimizer.state_dict(),
-                #     'val_loss': best_val_loss
-                # }, best_model_path)
                 print(f"Best model saved with validation loss: {val_loss:.5f}")
 
             else:

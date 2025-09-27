@@ -3,9 +3,8 @@ import numpy as np
 import torch
 import torch.optim as optim
 import torch.nn as nn
-from sklearn.metrics import log_loss
 
-from utils import slice_to_patient_dataset, prepare_device, move_to_device, prepare_classic_classifier_dataset, \
+from utils import slice_to_patient_dataset, prepare_device, move_to_device, \
                     get_dataloader_late_sampler, get_dataloader_late, \
                     get_dataloader_intermediate_1_sampler, get_dataloader_intermediate_1, \
                     get_dataloader_early_2_sampler, get_dataloader_early_2, \
@@ -15,9 +14,8 @@ from utils import slice_to_patient_dataset, prepare_device, move_to_device, prep
                     calculate_save_metrics_late
 
 from fusion import late_fusion_function                   
-from trainer import nn_Trainer_early, nn_Trainer_intermediate, nn_Trainer_late, cl_Trainer
+from trainer import nn_Trainer_early, nn_Trainer_intermediate, nn_Trainer_late
 from model import model_selection_early, model_selection_intermediate, model_selection_late
-
 
 
 
@@ -54,24 +52,24 @@ class Model:
         # Set the random seed for reproducibility
         self.set_seed()
 
-        match self.config.fusion_method:
-            case 'early_1_fusion':
-                self._train_early_1(train_slice_df, val_slice_df, test_slice_df)
+        match self.config.fusion_strategy:
+            case 'ELF':
+                self._train_ELF(train_slice_df, val_slice_df, test_slice_df)
 
-            case 'early_2_fusion':
-                self._train_early_2(train_slice_df, val_slice_df)
+            case 'ERF':
+                self._train_ERF(train_slice_df, val_slice_df)
 
-            case 'intermediate_1_fusion':
-                self._train_intermediate_1(train_slice_df, val_slice_df)
+            case 'ISF':
+                self._train_ISF(train_slice_df, val_slice_df)
 
-            case 'intermediate_2_fusion':
-                self._train_intermediate_2(train_slice_df, val_slice_df)
+            case 'IMF':
+                self._train_IMF(train_slice_df, val_slice_df)
 
-            case 'late_fusion':
-                self._train_late(train_slice_df, val_slice_df)
+            case 'L':
+                self._train_L(train_slice_df, val_slice_df)
 
             case '-':
-                raise ValueError(f"Unknown fusion method: {self.config.fusion_method}")
+                raise ValueError(f"Unknown fusion strategy: {self.config.fusion_strategy}")
         return
             
     
@@ -93,30 +91,29 @@ class Model:
         else:
             modality = self.config.modalities[0] 
 
-        match self.config.fusion_method:
-            case 'early_1_fusion':
-                # acc, mcc, f1_w, recall_w, precision_w = self._test_early_1(test_slice_df, modality, 0, training_time_spent)
-                return self._test_early_1(test_slice_df, modality, 0, training_time_spent)
+        match self.config.fusion_strategy:
+            case 'ELF':
+                return self._test_ELF(test_slice_df, modality, 0, training_time_spent)
 
-            case 'early_2_fusion':
-                return self._test_early_2(test_slice_df, modality, training_time_spent)
+            case 'ERF':
+                return self._test_ERF(test_slice_df, modality, training_time_spent)
 
-            case 'intermediate_1_fusion':
-                return self._test_intermediate_1(test_slice_df, modality, training_time_spent)
+            case 'ISF':
+                return self._test_ISF(test_slice_df, modality, training_time_spent)
 
-            case 'intermediate_2_fusion':
-                return self._test_intermediate_2(test_slice_df, modality, training_time_spent)
+            case 'IMF':
+                return self._test_IMF(test_slice_df, modality, training_time_spent)
 
-            case 'late_fusion':
-                return self._test_late(test_slice_df, training_time_spent)
+            case 'L':
+                return self._test_L(test_slice_df, training_time_spent)
 
             case '-':
-                raise ValueError(f"Unknown fusion method: {self.config.fusion_method}")
+                raise ValueError(f"Unknown fusion strategy: {self.config.fusion_strategy}")
                 return
             
     
     def _test_loop(self, model, test_dataloader)-> tuple[np.ndarray, np.ndarray, np.ndarray, float]:
-        '''This function is the testing loop for the early_2, intermediate_1 fusion method.
+        '''This function is the testing loop for the models.
         
         Args:
             model (_type:torch.nn.Module_): the model to be tested
@@ -139,9 +136,7 @@ class Model:
         model = model.to(device)
  
         # Define loss function
-        match self.config.num_class:
-            case 2: criterion= nn.BCEWithLogitsLoss()  # For binary classification
-            case 3: criterion= nn.CrossEntropyLoss()  # For multi-class classification
+        criterion= nn.BCEWithLogitsLoss()
 
         # Set the model to evaluation mode (for inference)
         model.eval()  
@@ -158,7 +153,7 @@ class Model:
                 inputs = move_to_device(inputs, device)
                 labels = move_to_device(labels, device)
                 
-                if self.config.fused_model in ['Inter_2_concat_attn', 'Inter_1_concat_attn', 'Inter_1_gated_attn']:
+                if self.config.fused_model in ['Inter_1_concat_attn']:
                     outputs, attn_weights = model(inputs)
                     attn_weights = torch.squeeze(attn_weights, 0)
                     all_weights.append(attn_weights.detach().cpu()) 
@@ -197,7 +192,7 @@ class Model:
         print(f"True labels shape: {y_labels.shape}, True labels type: {type(y_labels)}")
         print(f"Predicted shape: {y_outputs.shape}, Predicted type: {type(y_outputs)}")
 
-        if self.config.fused_model in ['Inter_2_concat_attn', 'Inter_1_concat_attn', 'Inter_1_gated_attn']:
+        if self.config.fused_model in ['Inter_1_concat_attn']:
             all_weights = np.array(all_weights)
             print(f"Attention weights shape: {all_weights.shape}", f"Attention weights type: {type(all_weights)}")
             mean_weights = all_weights.mean(axis=0).squeeze()
@@ -208,11 +203,11 @@ class Model:
             return y_labels, y_outputs, y_predicted, test_loss 
 
 
-################################################ Code for Early_1 Fusion ################################################
+################################################ Code for ELF Fusion ################################################
 
 
-    def _train_early_1(self, train_slice_df, val_slice_df, test_slice_df)-> None:
-        '''This function handles the training process for the early_1 fusion method.
+    def _train_ELF(self, train_slice_df, val_slice_df, test_slice_df)-> None:
+        '''This function handles the training process for the ELF fusion strategy.
 
         Args:
             train_slice_df (_type:Pandas DataFrame_): containing the training data in slice level
@@ -262,7 +257,7 @@ class Model:
 
         # Training phase for early fused features
         print('=========================================================')
-        print('Training the model with Early_1 fusion method is in progress...')
+        print('Training the model with ELF fusion strategy is in progress...')
         start_time_2 = time.time()
         # If there are multiple modalities, concatenate them for training
         if len(self.config.modalities) > 1:
@@ -273,15 +268,15 @@ class Model:
         self._train_model_early_1(train_slice_df, val_slice_df, modality, 0)
 
         print('=========================================================')
-        print('Training the model for Early_1 fusion method completed.')
+        print('Training the model for ELF fusion strategy completed.')
         train_time_2 = (time.time() - start_time_2) / 60
         training_time_dict[modality] = train_time_2
-        print(f'Training time for the Early_1 fused features model: {training_time_dict[modality]:.2f} minutes')
+        print(f'Training time for the ELF fused features model: {training_time_dict[modality]:.2f} minutes')
         return
 
 
-    def _train_model_early_1(self, train_metadata_df, val_metadata_df, modality, uni)-> None:
-        '''This function is the internal training function for the early_1 fusion method
+    def _train_model_ELF(self, train_metadata_df, val_metadata_df, modality, uni)-> None:
+        '''This function is the internal training function for the ELF fusion strategy
         
         Args:
             train_metadata_df (_type:Pandas DataFrame_): containing the training data in patient level
@@ -296,7 +291,7 @@ class Model:
         # Set the random seed for reproducibility
         self.set_seed()
 
-        if  uni == 1: # for feature extraction in Early_1 fusion
+        if  uni == 1: # for feature extraction in ELF fusion
             if modality == 'Clinical':
                 model_type = self.config.cl_model
                 learning_rate = self.config.lr_cl
@@ -310,10 +305,10 @@ class Model:
             train_dataset, train_dataloader = get_dataloader_late_sampler(metadata_df=train_metadata_df, config=self.config, train_flag=1, modality=modality, batch_size=batch_size)
             val_dataset, val_dataloader = get_dataloader_late(metadata_df=val_metadata_df, config=self.config, train_flag=0, modality=modality, batch_size=batch_size)
 
-        else: # for the main training phase of Early_1 fusion
+        else: # for the main training phase of ELF fusion
             model_type = self.config.fused_model
             learning_rate = self.config.lr_fused
-            self.config.lmbda = 1e-4 # regularization parameter for Early_1 fusion hard-coded to 1e-4
+            self.config.lmbda = 1e-4 # regularization parameter for ELF fusion hard-coded to 1e-4
 
             # create dataloaders with sampler
             train_dataset, train_dataloader = get_dataloader_intermediate_1_sampler(metadata_df=train_metadata_df, config=self.config, train_flag=1, batch_size=self.config.batch_size_fused)
@@ -361,7 +356,7 @@ class Model:
 
         # Define loss function
         match self.config.num_class:
-            case 2: criterion = nn.BCEWithLogitsLoss()  # OR nn.BCELoss()   For binary classification
+            case 2: criterion = nn.BCEWithLogitsLoss()  # For binary classification
             case 3: criterion = nn.CrossEntropyLoss()  # For multi-class classification               
 
         nn_trainer = nn_Trainer_early(model, modality, criterion, optimizer,
@@ -376,8 +371,8 @@ class Model:
         return
             
 
-    def _test_early_1(self, test_slice_df, modality, uni, training_time_spent)-> tuple[float, float, float, float, float]:
-        '''This function is the testing function for the early_1 fusion method
+    def _test_ELF(self, test_slice_df, modality, uni, training_time_spent)-> tuple[float, float, float, float, float]:
+        '''This function is the testing function for the ELF fusion strategy
         
         Args:
             test_slice_df (_type:Pandas DataFrame_): containing the test data in slice level
@@ -425,13 +420,13 @@ class Model:
             return acc, mcc, f1_w, recall_w, precision_w       
         
             
-########################################## End of code for Early_1 Fusion ################################################
+########################################## End of code for ELF Fusion ################################################
 
-############################################## Code for Early_2 Fusion ###################################################            
+############################################## Code for ERF Fusion ###################################################            
 
 
-    def _train_early_2(self, train_slice_df, val_slice_df)-> None:
-        '''This function handles the training process for the early_2 fusion method.
+    def _train_ERF(self, train_slice_df, val_slice_df)-> None:
+        '''This function handles the training process for the ERF fusion strategy.
 
         Args:
             train_slice_df (_type:Pandas DataFrame_): containing the training data in slice level
@@ -457,9 +452,7 @@ class Model:
         model = model.to(device)
 
         # Define loss function
-        match self.config.num_class:
-            case 2: criterion = nn.BCEWithLogitsLoss()  # For binary classification
-            case 3: criterion = nn.CrossEntropyLoss()  # For multi-class classification
+        criterion = nn.BCEWithLogitsLoss()  
 
         # Define optimizer
         optimizer = optim.Adam(model.parameters(), lr=self.config.lr_fused, weight_decay=self.config.lmbda)
@@ -482,8 +475,8 @@ class Model:
         return
 
 
-    def _test_early_2(self, test_slice_df, modality, training_time_spent)-> tuple[float, float, float, float, float]:
-        '''This function is the testing function for the early_2 fusion method
+    def _test_ERF(self, test_slice_df, modality, training_time_spent)-> tuple[float, float, float, float, float]:
+        '''This function is the testing function for the ERF fusion strategy
         
         Args:
             test_slice_df (_type:Pandas DataFrame_): containing the test data in slice level
@@ -520,12 +513,13 @@ class Model:
         return calculate_save_metrics_early_2(self.config, modality, y_labels, y_predicted, training_time_spent, test_loss)
     
      
-################################################### End of code for Early_2 Fusion ################################################ 
+################################################### End of code for ERF Fusion ################################################ 
 
-################################################### Code for Intermediate_1 Fusion ################################################
+################################################### Code for ISF Fusion ################################################
 
-    def _train_intermediate_1(self, train_slice_df, val_slice_df)-> None:
-        '''This function handles the training process for the intermediate_1 fusion method.
+
+    def _train_ISF(self, train_slice_df, val_slice_df)-> None:
+        '''This function handles the training process for the ISF fusion strategy
 
         Args:
             train_slice_df (_type:Pandas DataFrame_): containing the training data in slice level
@@ -549,25 +543,20 @@ class Model:
         model = model.to(device)
 
         # Define loss function
-        match self.config.num_class:
-            case 2: criterion = nn.BCEWithLogitsLoss()  # OR nn.BCELoss()   For binary classification
-            case 3: criterion = nn.CrossEntropyLoss()  # For multi-class classification
-                    
-    
+        criterion = nn.BCEWithLogitsLoss() 
+                       
         # Define optimizer with different learning rates
         if 'Clinical' in self.config.modalities:
             optimizer = optim.AdamW([
                 {'params': model.mri_encoders.parameters(), 'lr': self.config.lr_mri, 'weight_decay': self.config.lmbda},
                 {'params': model.clinical_encoder.parameters(), 'lr': self.config.lr_cl, 'weight_decay': self.config.lmbda},
-                {'params': model.modality_attention.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda},
-                # {'params': model.gated_modality_attention.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda}, 
+                # {'params': model.modality_attention.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda}, # for the ISF with MWB 
                 {'params': model.classifier.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda}
                 ])
         else:
             optimizer = optim.AdamW([
                 {'params': model.mri_encoders.parameters(), 'lr': self.config.lr_mri, 'weight_decay': self.config.lmbda},
-                {'params': model.modality_attention.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda},
-                # {'params': model.gated_modality_attention.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda},
+                # {'params': model.modality_attention.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda}, # for the ISF with MWB
                 {'params': model.classifier.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda}
             ])
 
@@ -589,9 +578,9 @@ class Model:
         return
 
 
-    def _test_intermediate_1(self, test_slice_df, modality, training_time_spent)-> tuple[float, float, float, float, float, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        '''This function is the testing function for the intermediate_1 fusion method
-        
+    def _test_ISF(self, test_slice_df, modality, training_time_spent)-> tuple[float, float, float, float, float, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        '''This function is the testing function for the ISF fusion strategy
+
         Args:
             test_slice_df (_type:Pandas DataFrame_): containing the test data in slice level
             training_time_spent (_type:dict_): the time spent on the training 
@@ -635,13 +624,13 @@ class Model:
         return calculate_save_metrics_intermediate_1(self.config, modality, y_labels, y_predicted, training_time_spent, test_loss, all_weights)
 
 
-############################################## End of code for Intermediate_1 Fusion #####################################
+############################################## End of code for ISF Fusion #####################################
 
-############################################### Code for Intermediate_2 Fusion ###########################################
-    
+############################################### Code for IMF Fusion ###########################################
 
-    def _train_intermediate_2(self, train_slice_df, val_slice_df)-> None:
-        '''This function handles the training process for the intermediate_1 fusion method.
+
+    def _train_IMF(self, train_slice_df, val_slice_df)-> None:
+        '''This function handles the training process for the IMF fusion strategy
 
         Args:
             train_slice_df (_type:Pandas DataFrame_): containing the training data in slice level
@@ -666,18 +655,21 @@ class Model:
         model = model.to(device)
 
         # Define loss function
-        match self.config.num_class:
-            case 2: criterion = nn.BCEWithLogitsLoss()  # OR nn.BCELoss()   For binary classification
-            case 3: criterion = nn.CrossEntropyLoss()  # For multi-class classification
+        criterion = nn.BCEWithLogitsLoss()
 
-        
         # Define optimizer with different learning rates
-        optimizer = optim.AdamW([
-            {'params': model.mri_encoder.parameters(), 'lr': self.config.lr_mri, 'weight_decay': self.config.lmbda},
-            {'params': model.clinical_encoder.parameters(), 'lr': self.config.lr_cl, 'weight_decay': self.config.lmbda},
-            {'params': model.modality_attention.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda}, # for Inter_2_conat_attn
-            {'params': model.classifier.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda}
+        if 'Clinical' in self.config.modalities:
+            optimizer = optim.AdamW([
+                {'params': model.mri_encoders.parameters(), 'lr': self.config.lr_mri, 'weight_decay': self.config.lmbda},
+                {'params': model.clinical_encoder.parameters(), 'lr': self.config.lr_cl, 'weight_decay': self.config.lmbda},
+                {'params': model.classifier.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda}
+                ])
+        else:
+            optimizer = optim.AdamW([
+                {'params': model.mri_encoders.parameters(), 'lr': self.config.lr_mri, 'weight_decay': self.config.lmbda},
+                {'params': model.classifier.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda}
             ])
+
 
         if len(self.config.modalities) > 1:
             modality = '+'.join(self.config.modalities)
@@ -696,8 +688,8 @@ class Model:
         nn_trainer.nn_train()
 
 
-    def _test_intermediate_2(self, test_slice_df, modality, training_time_spent)-> tuple[float, float, float, float, float]:
-        '''This function is the testing function for the intermediate_2 fusion method
+    def _test_IMF(self, test_slice_df, modality, training_time_spent)-> tuple[float, float, float, float, float]:
+        '''This function is the testing function for the IMF fusion strategy
         
         Args:
             test_slice_df (_type:Pandas DataFrame_): containing the test data in slice level
@@ -728,24 +720,19 @@ class Model:
             print("Model checkpoint not found. Ensure the path to 'best_model.pth' is correct.")
             return
 
-        if self.config.fused_model in ['Inter_2_concat_attn']:
-            y_labels, y_outputs, y_predicted, test_loss, all_weights = self._test_loop(model, test_dataloader)
-        else:
-            y_labels, y_outputs, y_predicted, test_loss = self._test_loop(model, test_dataloader)
+        y_labels, y_outputs, y_predicted, test_loss = self._test_loop(model, test_dataloader)
 
         # calculate the metrics for the model and save the results in three file of .text, .json, and .csv and return
-        return calculate_save_metrics_intermediate_2(self.config, modality, y_labels, y_predicted, training_time_spent, test_loss, all_weights)
+        return calculate_save_metrics_intermediate_2(self.config, modality, y_labels, y_predicted, training_time_spent, test_loss)
   
-    
-    
-############################################ End of code for Intermediate_2 Fusion ########################################
+      
+############################################ End of code for IMF Fusion ########################################
 
-##################################################### Code for Late Fusion ################################################   
+##################################################### Code for L Fusion ################################################   
 
 
-    def _train_late(self, train_slice_df, val_slice_df)-> None:
-        '''This function handles the training process for the late fusion method.
-
+    def _train_L(self, train_slice_df, val_slice_df)-> None:
+        '''This function handles the training process for the L fusion strategy
         Args:
             train_slice_df (_type:Pandas DataFrame_): containing the training data in slice level
             val_slice_df (_type:Pandas DataFrame_): containing the validation data in slice level
@@ -773,7 +760,7 @@ class Model:
                 train_df = slice_to_patient_dataset(train_slice_df) # Change dataset from slice level to patient level
                 val_df = slice_to_patient_dataset(val_slice_df)
 
-            self._train_model_late(train_slice_df=train_df, val_slice_df=val_df, modality=modality)
+            self._train_model_L(train_slice_df=train_df, val_slice_df=val_df, modality=modality)
 
             print(f'Training the model for {modality} modality completed.')
             # Save the training time for each modality
@@ -787,8 +774,8 @@ class Model:
         print(f'Total training time for all modalities in fold {self.config.fold} is: {total_training_time:.2f} minutes')    
 
 
-    def _train_model_late(self, train_slice_df, val_slice_df, modality)-> None:
-        '''This function is the internal training function (modality specific) for the late fusion method
+    def _train_model_L(self, train_slice_df, val_slice_df, modality)-> None:
+        '''This function is the internal training function (modality specific) for the L fusion strategy
         
         Args:
             train_metadata_df (_type:Pandas DataFrame_): containing the training data in patient level
@@ -818,41 +805,29 @@ class Model:
 
         # select the backbone model to be trained
         model = model_selection_late(model_type, self.config)
-
-        if model_type == 'XGBoost': # the backbone model is a classical ML model
-            # prepare X_train_np, y_train_np, X_val_np, y_val_np
-            X_train_np, y_train_np = prepare_classic_classifier_dataset(train_dataset)
-            X_val_np, y_val_np = prepare_classic_classifier_dataset(val_dataset)
-            # cl_trainer
-            cl_trainer = cl_Trainer(model, self.config, modality, X_train_np, y_train_np, X_val_np, y_val_np)
-            cl_trainer.cl_train()
             
-        else: # the backbone model is a Neural Network
-            # prepare for (multi-device) GPU training
-            device, device_ids = prepare_device(self.config.n_gpu)
-            model = model.to(device)
+        # prepare for (multi-device) GPU training
+        device, device_ids = prepare_device(self.config.n_gpu)
+        model = model.to(device)
 
-            # Define loss function
-            match self.config.num_class:
-                case 2: criterion = nn.BCEWithLogitsLoss()  # OR nn.BCELoss()   For binary classification
-                case 3: criterion = nn.CrossEntropyLoss()  # For multi-class classification
-                    
-            # Define optimizer
-            optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=self.config.lmbda)
+        # Define loss function
+        criterion = nn.BCEWithLogitsLoss() 
+                
+        # Define optimizer
+        optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=self.config.lmbda)
 
+        nn_trainer = nn_Trainer_late(model, modality, criterion, optimizer,
+                            config = self.config,
+                            device = device,
+                            train_dataloader = train_dataloader,
+                            val_dataloader = val_dataloader,
+                            )
 
-            nn_trainer = nn_Trainer_late(model, modality, criterion, optimizer,
-                                config = self.config,
-                                device = device,
-                                train_dataloader = train_dataloader,
-                                val_dataloader = val_dataloader,
-                                )
-
-            nn_trainer.nn_train()
+        nn_trainer.nn_train()
 
    
-    def _test_late(self, test_slice_df, training_time_spent)-> tuple[float, float, float, float, float]:
-        '''This function is the testing function for the late fusion method
+    def _test_L(self, test_slice_df, training_time_spent)-> tuple[float, float, float, float, float]:
+        '''This function is the testing function for the L fusion strategy
         
         Args:
             test_slice_df (_type:Pandas DataFrame_): containing the test data in slice level
@@ -883,7 +858,6 @@ class Model:
             # calculate the metrics and save the results in three file of .text, .json, and .csv
             calculate_save_metrics_late(self.config, modality, pred_dic[f'label_{modality}'], pred_dic[f'predicted_{modality}'], multi, modalitiy_specific_training_time, test_loss)
 
-
         if len(self.config.modalities) > 1:
                 modality = '+'.join(self.config.modalities)
                 multi = 1
@@ -895,14 +869,11 @@ class Model:
 
         y_labels = pred_dic[f'label_{self.config.modalities[0]}']
 
-        for fusion_m in ['majority_voting', 'probability_averaging']:
-
-            self.config.fused_model = fusion_m
-            # Late fusion of the predictions of models
-            y_predicted_fused = late_fusion_function(self.config, pred_dic)
+        # Late fusion of the predictions of models
+        y_predicted_fused = late_fusion_function(self.config, pred_dic)
             
-            # calculate the metrics for the late fused model and save the results in three file of .text, .json, and .csv
-        return calculate_save_metrics_late(self.config, modality, y_labels, y_predicted_fused, multi, training_time_spent, t_loss) # y_labels is the y_labels for the first modality in config.modalities list 
+        # calculate the metrics for the late fused model and save the results in three file of .text, .json, and .csv
+        return calculate_save_metrics_late(self.config, modality, y_labels, y_predicted_fused, multi, training_time_spent, t_loss)  
    
 
     def _predict_with_modality_specific_model(self, test_slice_df, modality)-> tuple[np.ndarray, np.ndarray, np.ndarray, float]:
@@ -933,36 +904,11 @@ class Model:
         
         model = model_selection_late(model_type, self.config) 
 
-        axis_dic = {0: "Sagittal", 1: "Coronal", 2: "Axial"}
-
-        if model_type == 'XGBoost': # the backbone model is a classical ML model
-            # prepare X_test_np and y_labels both np.array
-            X_test_np, y_labels = prepare_classic_classifier_dataset(test_dataset)
-
-            # Load the saved model
-            try:
-                model.load_model(f'saved_model_{modality}_{self.config.fold}.model')
-            except FileNotFoundError:
-                print("Model checkpoint not found. Ensure the path to 'saved_model.pth' is correct.")
-                return
-
-            # Calculate the predictions for the test data
-            y_predicted = model.predict(X_test_np)
-
-            # Get predicted probabilities (only for the positive class)
-            y_predicted_probs = model.predict_proba(X_test_np)[:, 1]  # Extract probability of class 1
-
-            # Compute training loss
-            test_loss = log_loss(y_labels, y_predicted_probs)
-
-            return y_labels, y_predicted_probs, y_predicted, test_loss
-        
-        else:
-            # Load the saved state_dict
-            try:
-                model.load_state_dict(torch.load(f'best_model_{modality}_{self.config.fold}.pth' , weights_only = True))
-            except FileNotFoundError:
-                print("Model checkpoint not found. Ensure the path to 'best_model.pth' is correct.")
-                return
+        # Load the saved state_dict
+        try:
+            model.load_state_dict(torch.load(f'best_model_{modality}_{self.config.fold}.pth' , weights_only = True))
+        except FileNotFoundError:
+            print("Model checkpoint not found. Ensure the path to 'best_model.pth' is correct.")
+            return
             
-            return self._test_loop(model, test_dataloader)
+        return self._test_loop(model, test_dataloader)

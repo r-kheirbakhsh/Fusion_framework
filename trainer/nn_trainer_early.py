@@ -87,7 +87,7 @@ class nn_Trainer_early:
                 # Track hyperparameters and run metadata
                 config= {
                     'dataset': f'{axis_dic[self.config.axis]}_43_56_396_{self.config.seed}_{self.config.fold}',
-                    'fusion method': self.config.fusion_method,
+                    'fusion strategy': self.config.fusion_strategy,
                     'modality': self.modality, 
                     'number of classes': self.config.num_class,
                     'architecture': model_type,
@@ -112,7 +112,7 @@ class nn_Trainer_early:
 
         best_val_loss = float('inf')
         patience_counter = 0  # initialize early stopping counter
-        best_model_path = f'best_model_{self.modality}_{self.config.fold}.pth' # BE CARFUL WHERE YOU SAVE THE BEST MODEL, YOU SHOULD UPLOAD WEIGHTS IN TEST FROM HERE!
+        best_model_path = f'best_model_{self.modality}_{self.config.fold}.pth' 
 
         # Training loop
         for epoch in range(n_epochs):
@@ -133,12 +133,9 @@ class nn_Trainer_early:
                 self.optimizer.zero_grad()
                 outputs= self.model(inputs)
 
-                if self.config.num_class == 2:
-                    labels = labels.float()
-                    outputs = torch.squeeze(outputs)  # Remove the extra dimension [batch_size, 1] -> [batch_size]
-                    predicted = torch.round(torch.sigmoid(outputs))  # for Binary classification
-                else:
-                    _, predicted = torch.max(outputs, 1)  # for Multi-class classification
+                labels = labels.float()
+                outputs = torch.squeeze(outputs)  # Remove the extra dimension [batch_size, 1] -> [batch_size]
+                predicted = torch.round(torch.sigmoid(outputs))  # for Binary classification
             
                 loss = self.criterion(outputs, labels)
 
@@ -154,8 +151,8 @@ class nn_Trainer_early:
 
     
             train_loss /= len(self.train_dataloader)  # it is the average loss for each batch
-            train_accuracy = correct / total # total (number of instances in the dataloader) is correct, len(self.train_dataloader) is the number of batches in the dataloader
-            train_mcc = matthews_corrcoef(np.concatenate(labels_train_list), np.concatenate(predicted_train_list))  # added for mcc
+            train_accuracy = correct / total
+            train_mcc = matthews_corrcoef(np.concatenate(labels_train_list), np.concatenate(predicted_train_list))  
 
             train_losses.append(train_loss)
             train_accuracies.append(train_accuracy)
@@ -177,12 +174,9 @@ class nn_Trainer_early:
                     
                     outputs= self.model(inputs)
 
-                    if self.config.num_class == 2:
-                        labels = labels.float()
-                        outputs = torch.squeeze(outputs) # Remove the extra dimension [batch_size, 1] -> [batch_size]
-                        predicted = torch.round(torch.sigmoid(outputs))  # Binary classification
-                    else:
-                        _, predicted = torch.max(outputs, 1)  # Multi-class classification
+                    labels = labels.float()
+                    outputs = torch.squeeze(outputs) # Remove the extra dimension [batch_size, 1] -> [batch_size]
+                    predicted = torch.round(torch.sigmoid(outputs))  # Binary classification
 
                     loss = self.criterion(outputs, labels)
 
@@ -195,12 +189,12 @@ class nn_Trainer_early:
             
             val_loss /= len(self.val_dataloader)
             val_accuracy = correct / total  
-            val_mcc = matthews_corrcoef(np.concatenate(labels_val_list), np.concatenate(predicted_val_list))  # added for mcc
+            val_mcc = matthews_corrcoef(np.concatenate(labels_val_list), np.concatenate(predicted_val_list))  
 
 
             val_losses.append(val_loss)
             val_accuracies.append(val_accuracy)
-            val_mccs.append(val_mcc)  # added for validation MCC
+            val_mccs.append(val_mcc)  
 
             
             print(f'Epoch [{epoch+1}/{n_epochs}], '

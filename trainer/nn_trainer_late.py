@@ -77,7 +77,7 @@ class nn_Trainer_late:
             # Track hyperparameters and run metadata
             config= {
                 'dataset': f'{axis_dic[self.config.axis]}s_43_56_396_{self.config.seed}_{self.config.fold}',
-                'fusion method': self.config.fusion_method,
+                'fusion strategy': self.config.fusion_strategy,
                 'modality': self.modality, 
                 'number of classes': self.config.num_class,
                 'architecture': model_type,
@@ -99,7 +99,6 @@ class nn_Trainer_late:
         train_mccs = []
         val_mccs = []
 
-
         best_val_loss = float('inf')
         patience_counter = 0  # initialize early stopping counter
         best_model_path = f'best_model_{self.modality}_{self.config.fold}.pth'
@@ -114,21 +113,16 @@ class nn_Trainer_late:
             labels_train_list = []
             predicted_train_list = []
 
-            #for batch_idx, (inputs, labels) in enumerate(train_dataloader):
             for inputs, labels in self.train_dataloader:
                 inputs, labels = inputs.to(self.device), labels.to(self.device)
        
                 self.optimizer.zero_grad()
                 outputs= self.model(inputs)
 
-                if self.config.num_class == 2:
-                    labels = labels.float()
-                    outputs = torch.squeeze(outputs)  # Remove the extra dimension [batch_size, 1] -> [batch_size]
-                    predicted = torch.round(torch.sigmoid(outputs))  # for Binary classification
-
-                else:
-                    _, predicted = torch.max(outputs, 1)  # for Multi-class classification
-            
+                labels = labels.float()
+                outputs = torch.squeeze(outputs)  # Remove the extra dimension [batch_size, 1] -> [batch_size]
+                predicted = torch.round(torch.sigmoid(outputs))  # for Binary classification
+           
                 loss = self.criterion(outputs, labels)
 
                 loss.backward()
@@ -143,8 +137,8 @@ class nn_Trainer_late:
 
     
             train_loss /= len(self.train_dataloader)  # it is the average loss for each batch
-            train_accuracy = correct / total # total (number of instances in the dataloader) is correct, len(self.train_dataloader) is the number of batches in the dataloader        
-            train_mcc = matthews_corrcoef(np.concatenate(labels_train_list), np.concatenate(predicted_train_list))  # added for mcc
+            train_accuracy = correct / total
+            train_mcc = matthews_corrcoef(np.concatenate(labels_train_list), np.concatenate(predicted_train_list)) 
 
             train_losses.append(train_loss)
             train_accuracies.append(train_accuracy)
@@ -161,16 +155,12 @@ class nn_Trainer_late:
             with torch.no_grad():
                 for inputs, labels in self.val_dataloader:
                     inputs, labels = inputs.to(self.device), labels.to(self.device)
-
                     
                     outputs= self.model(inputs)
 
-                    if self.config.num_class == 2:
-                        labels = labels.float()
-                        outputs = torch.squeeze(outputs) # Remove the extra dimension [batch_size, 1] -> [batch_size]
-                        predicted = torch.round(torch.sigmoid(outputs))  # Binary classification
-                    else:
-                        _, predicted = torch.max(outputs, 1)  # Multi-class classification
+                    labels = labels.float()
+                    outputs = torch.squeeze(outputs) # Remove the extra dimension [batch_size, 1] -> [batch_size]
+                    predicted = torch.round(torch.sigmoid(outputs))  # Binary classification
 
                     loss = self.criterion(outputs, labels)
 
@@ -182,8 +172,8 @@ class nn_Trainer_late:
                     predicted_val_list.append(predicted.cpu().detach().numpy())
             
             val_loss /= len(self.val_dataloader)
-            val_accuracy = correct / total # why not: len(self.val_dataloader) 
-            val_mcc = matthews_corrcoef(np.concatenate(labels_val_list), np.concatenate(predicted_val_list))  # added for mcc
+            val_accuracy = correct / total
+            val_mcc = matthews_corrcoef(np.concatenate(labels_val_list), np.concatenate(predicted_val_list))
 
             val_losses.append(val_loss)
             val_accuracies.append(val_accuracy)
@@ -198,12 +188,6 @@ class nn_Trainer_late:
 
             # Log metrics to wandb
             wandb.log({'Train Loss': train_loss, 'Val Loss': val_loss, 'Train Accuracy': train_accuracy, 'Val Accuracy': val_accuracy, 'Train MCC': train_mcc, 'Val MCC': val_mcc})
-              
-            # # Save the best model
-            # if val_loss < best_val_loss: # The criteria for choosing the best model should be aligned with the loss function - discuss it with Aonghus???
-            #     best_val_loss = val_loss
-            #     torch.save(self.model.state_dict(), best_model_path)
-            #     print(f"Best model saved with validation loss: {val_loss:.5f}")
 
 
             # Early stopping logic
