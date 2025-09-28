@@ -18,10 +18,11 @@ from dataloader import UCSFslice_late_fusion, UCSFslice_intermediate_1_fusion, U
 
 def prepare_device(n_gpu_use):
     '''setup GPU device if available. get gpu device indices which are used for DataParallel
+
     Args:
         n_gpu_use (__type:int__): indicates the number of gpus configured to use
-    '''
 
+    '''
     n_gpu = torch.cuda.device_count()
     if n_gpu_use > 0 and n_gpu == 0:
         print("Warning: There\'s no GPU available on this machine,"
@@ -37,10 +38,12 @@ def prepare_device(n_gpu_use):
     return device, list_ids
 
 
+
 def move_to_device(batch, device):
     if isinstance(batch, dict):
         return {k: v.to(device) for k, v in batch.items()}
     return batch.to(device)
+
 
 
 def scale_clinical_data(config, train_df, val_df, test_df)-> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -109,15 +112,6 @@ def prepare_dataset_split(config, dataset_patient_df, train_index, test_index)->
     train_slice_df = dataset_slice_df[dataset_slice_df['ID'].isin(train_patient_df['ID'])]
     val_slice_df = dataset_slice_df[dataset_slice_df['ID'].isin(val_patient_df['ID'])]
     test_slice_df = dataset_slice_df[dataset_slice_df['ID'].isin(test_patient_df['ID'])]
-   
-    # ################################### for train/test
-    # train_patient_df = dataset_patient_df.iloc[train_index]
-    # test_patient_df = dataset_patient_df.iloc[test_index]
-
-    # train_slice_df = dataset_slice_df[dataset_slice_df['ID'].isin(train_patient_df['ID'])]
-    # val_slice_df = dataset_slice_df[dataset_slice_df['ID'].isin(test_patient_df['ID'])]
-    # test_slice_df = dataset_slice_df[dataset_slice_df['ID'].isin(test_patient_df['ID'])]
-    # #########################################
 
     # Scale Clinical data
     train_slice_scaled_df, val_slice_scaled_df, test_slice_scaled_df = scale_clinical_data(config, train_slice_df, val_slice_df, test_slice_df)
@@ -130,7 +124,8 @@ def prepare_dataset_split(config, dataset_patient_df, train_index, test_index)->
 
 
 def dataset_slice_split(config)-> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    ''' This function takes a config, and split the dataset (slice level) specified in the config into train, val, and test, saves them, and then returns their data frames
+    ''' This function takes a config, and split the dataset (slice level) specified in the config into 
+        train, val, and test, saves them, and then returns their data frames
 
     Args:
         config (_type:Config_): the configeration of the problem, the ones used in this class:
@@ -182,7 +177,8 @@ def dataset_slice_split(config)-> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame
 
 
 def dataset_slice_get(config)-> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    ''' This function takes a config, and split the dataset (slice level) specified in the config into train, val, and test, saves them, and then returns their data frames
+    ''' This function takes a config, and split the dataset (slice level) specified in the config into 
+        train, val, and test, saves them, and then returns their data frames
 
     Args:
         config (_type:Config_): the configeration of the problem, the ones used in this class:
@@ -207,8 +203,9 @@ def dataset_slice_get(config)-> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
 
 
 
-def save_dataset_splited_statistics(config, train_df, val_df, test_df)->None:
+def save_dataset_splited_statistics(config, train_df, val_df, test_df)-> None:
     ''' This function takes the train, val, and test data frames (slice level) and saves the statistics of the dataset into a text file   
+    
     Args:
         config (_type:Config_): the configeration of the problem, the ones used in this class:
             config.axis (_type:int_): the axis of the slices (0: Sagittal, 1: Coronal, 2: Axial)
@@ -232,19 +229,17 @@ def save_dataset_splited_statistics(config, train_df, val_df, test_df)->None:
     train_patient_size = len(train_patient_df)
     val_patient_size = len(val_patient_df)
     test_patient_size = len(test_patient_df)
-    total_patient = train_patient_size + test_patient_size + val_patient_size # for the moment that I have test==val
+    total_patient = train_patient_size + test_patient_size + val_patient_size 
 
     # Get the number of data samples in each data set
     train_size = len(train_df)
     val_size = len(val_df)
     test_size = len(test_df)
-    total = train_size + test_size + val_size  # for the moment that I have test==val
+    total = train_size + test_size + val_size  
     
-
     # Save the original stdout so you can restore it later
     original_stdout = sys.stdout 
 
-    #axis_dic = {0: "Sagittal", 1: "Coronal", 2: "Axial"}
     # Redirect output to a file
     with open(f'dataset_{config.seed}_{config.fold}_statistics.txt', 'w') as f:
         sys.stdout = f  # Redirects all print statements to f
@@ -291,7 +286,7 @@ def save_dataset_splited_statistics(config, train_df, val_df, test_df)->None:
     
 
 def slice_to_patient_dataset(dataset_df_slice):
-    ''' This function takes a data set in pandas dataframe fromat at slice level, and retuens that data frame 
+    ''' This function takes a data set in pandas dataframe fromat at slice level, and retuens that dataframe 
         at patient level 
 
     Args:
@@ -309,30 +304,7 @@ def slice_to_patient_dataset(dataset_df_slice):
 
 
 
-def prepare_classic_classifier_dataset(dataset)-> Tuple[np.ndarray, np.ndarray]:
-
-    # data_np = np.array([instance.item() for instance in dataloader][0])
-    # labels_np = np.array([instance.item() for instance in dataloader][1])
-
-    # Create lists to store the data
-    tabular_data = []
-    labels = []
-
-    # Iterate through the dataset
-    for i in range(len(dataset)):
-        clinical_tensor, label_tensor = dataset[i]  # Extract data
-        tabular_data.append(clinical_tensor.numpy())  # Convert tensor to numpy
-        labels.append(label_tensor.numpy())
-
-    # Convert lists to NumPy arrays
-    tabular_data_np = np.stack(tabular_data)  # Shape: (num_samples, num_features)
-    labels_np = np.array(labels)  # Shape: (num_samples,)
-
-    return tabular_data_np, labels_np
-
-
-
-def get_dataloader_late(metadata_df, config, train_flag, modality, batch_size) -> Tuple[UCSFslice_late_fusion,DataLoader]:
+def get_dataloader_late(metadata_df, config, train_flag, modality, batch_size)-> Tuple[UCSFslice_late_fusion,DataLoader]:
     ''' This function takes a data set in pandas dataframe fromat and creats the relevant dataset class and dataloader 
 
     Args:
@@ -360,7 +332,6 @@ def get_dataloader_late(metadata_df, config, train_flag, modality, batch_size) -
             modality = modality,
         )
 
-    # During training, it is often beneficial to use drop_last to maintain a consistent batch size. This can help in stabilizing the gradient updates and improving convergence rates.
     if train_flag == 1:
         dataloader = DataLoader(
             dataset,
@@ -371,7 +342,7 @@ def get_dataloader_late(metadata_df, config, train_flag, modality, batch_size) -
             pin_memory=True,
             generator = g 
         )
-    # during evaluation or validation, you might want to keep all data points, including the last incomplete batch. Therefore, it is common to set drop_last to False in these scenarios.
+
     else:
         dataloader = DataLoader(
             dataset,
@@ -386,8 +357,8 @@ def get_dataloader_late(metadata_df, config, train_flag, modality, batch_size) -
 
 
 
-def get_labels_from_df(metadata_df, num_class, label_col):
-    ''' This function takes a data set in pandas dataframe fromat and returns the labels of the data
+def get_labels_from_df(metadata_df, num_class, label_col)-> list:
+    ''' This function takes a data set in pandas dataframe fromat and returns the labels of the instances in the data set
     
     Args:
         metadata_df (_type:dataframe_): the dataframe contaning data 
@@ -412,7 +383,7 @@ def get_labels_from_df(metadata_df, num_class, label_col):
 
 
 
-def get_dataloader_late_sampler(metadata_df, config, modality, train_flag, batch_size) -> Tuple[UCSFslice_late_fusion,DataLoader]:
+def get_dataloader_late_sampler(metadata_df, config, modality, train_flag, batch_size)-> Tuple[UCSFslice_late_fusion,DataLoader]:
     ''' This function takes a data set in pandas dataframe fromat and creates the relevant dataset class and dataloader with sampler
     
     Args:
@@ -438,7 +409,7 @@ def get_dataloader_late_sampler(metadata_df, config, modality, train_flag, batch
 
     sampler = WeightedRandomSampler(
     weights = weights,
-        num_samples = len(weights),  # or e.g., 1000 * batch_size for debugging
+        num_samples = len(weights),  
         replacement = True
     )
 
@@ -473,7 +444,7 @@ def get_dataloader_late_sampler(metadata_df, config, modality, train_flag, batch
 
 
 
-def get_dataloader_intermediate_1(metadata_df, config, train_flag, batch_size) -> Tuple[UCSFslice_intermediate_1_fusion,DataLoader]:
+def get_dataloader_intermediate_1(metadata_df, config, train_flag, batch_size)-> Tuple[UCSFslice_intermediate_1_fusion,DataLoader]:
     ''' This function takes a data set in pandas dataframe fromat and creats the relevant dataset class and dataloader 
 
     Args:
@@ -498,7 +469,6 @@ def get_dataloader_intermediate_1(metadata_df, config, train_flag, batch_size) -
              do_transform = train_flag,
          )
 
-
     if train_flag == 1:
         dataloader = DataLoader(
             dataset,
@@ -522,7 +492,7 @@ def get_dataloader_intermediate_1(metadata_df, config, train_flag, batch_size) -
 
 
 
-def get_dataloader_intermediate_1_sampler(metadata_df, config, train_flag, batch_size) -> Tuple[UCSFslice_intermediate_1_fusion, DataLoader]:
+def get_dataloader_intermediate_1_sampler(metadata_df, config, train_flag, batch_size)-> Tuple[UCSFslice_intermediate_1_fusion, DataLoader]:
     ''' This function takes a data set in pandas dataframe fromat and creates the relevant dataset class and dataloader with sampler
     
     Args:
@@ -557,7 +527,6 @@ def get_dataloader_intermediate_1_sampler(metadata_df, config, train_flag, batch
             do_transform = train_flag,
         )
 
-
     if train_flag == 1:
         dataloader = DataLoader(
             dataset,
@@ -580,7 +549,7 @@ def get_dataloader_intermediate_1_sampler(metadata_df, config, train_flag, batch
 
 
 
-def get_dataloader_intermediate_2(metadata_df, config, train_flag, batch_size) -> Tuple[UCSFslice_intermediate_2_fusion,DataLoader]:
+def get_dataloader_intermediate_2(metadata_df, config, train_flag, batch_size)-> Tuple[UCSFslice_intermediate_2_fusion,DataLoader]:
     ''' This function takes a data set in pandas dataframe fromat and creats the relevant dataset class and dataloader 
 
     Args:
@@ -605,7 +574,6 @@ def get_dataloader_intermediate_2(metadata_df, config, train_flag, batch_size) -
              do_transform = train_flag,
          )
 
-
     if train_flag == 1:
         dataloader = DataLoader(
             dataset,
@@ -629,7 +597,7 @@ def get_dataloader_intermediate_2(metadata_df, config, train_flag, batch_size) -
 
 
 
-def get_dataloader_intermediate_2_sampler(metadata_df, config, train_flag, batch_size) -> Tuple[UCSFslice_intermediate_2_fusion, DataLoader]:
+def get_dataloader_intermediate_2_sampler(metadata_df, config, train_flag, batch_size)-> Tuple[UCSFslice_intermediate_2_fusion, DataLoader]:
     ''' This function takes a data set in pandas dataframe fromat and creates the relevant dataset class and dataloader with sampler
     
     Args:
@@ -666,7 +634,6 @@ def get_dataloader_intermediate_2_sampler(metadata_df, config, train_flag, batch
             do_transform = train_flag,
         )
 
-
     if train_flag == 1:
         dataloader = DataLoader(
             dataset,
@@ -689,7 +656,7 @@ def get_dataloader_intermediate_2_sampler(metadata_df, config, train_flag, batch
 
 
 
-def get_dataloader_early_2(metadata_df, config, train_flag, batch_size) -> Tuple[UCSFslice_early_2_fusion, DataLoader]:
+def get_dataloader_early_2(metadata_df, config, train_flag, batch_size)-> Tuple[UCSFslice_early_2_fusion, DataLoader]:
     ''' This function takes a data set in pandas dataframe fromat and creats the relevant dataset class and dataloader 
 
     Args:
@@ -714,7 +681,6 @@ def get_dataloader_early_2(metadata_df, config, train_flag, batch_size) -> Tuple
              do_transform = train_flag,
          )
 
-
     if train_flag == 1:
         dataloader = DataLoader(
             dataset,
@@ -738,7 +704,7 @@ def get_dataloader_early_2(metadata_df, config, train_flag, batch_size) -> Tuple
 
 
 
-def get_dataloader_early_2_sampler(metadata_df, config, train_flag, batch_size) -> Tuple[UCSFslice_early_2_fusion, DataLoader]:
+def get_dataloader_early_2_sampler(metadata_df, config, train_flag, batch_size)-> Tuple[UCSFslice_early_2_fusion, DataLoader]:
     ''' This function takes a data set in pandas dataframe fromat and creats the relevant dataset class and dataloader 
 
     Args:
@@ -800,16 +766,18 @@ def get_dataloader_early_2_sampler(metadata_df, config, train_flag, batch_size) 
 
 
 
-def calculate_save_metrics_late(config, modality, y_labels, y_predicted, multi, training_time_spent, test_loss=None) -> Tuple[float, float, float, float, float]:   
+def calculate_save_metrics_late(config, modality, y_labels, y_predicted, multi, training_time_spent, test_loss=None)-> Tuple[float, float, float, float, float]:   
     ''' This function takes two numpy array, one the labels and the other predicted value, and then calculates 
     the performance metrics and saves the reports on three files of .tex, .json, and .csv
 
     Args:
         config (_type:Config_): the configeration of the problem, the ones used in this class:
+            config.fusion_strategy (_type:str_): the fusion strategy used in the model
             config.mri_model (_type:str_): the name of model for MRI modality
             config.cl_model (_type:str_): the name of model for Clinical modality
             config.seed (_type:str_): for reproducability
-            config.num_class (_type:int_): the number of class we have 2 or >2 
+            config.num_class (_type:int_): the number of class we have 2 or >2
+            config.scale_clinical_modality (_type:str_): the scaling method for the clinical modality
         modality(_type:str_): the modality(ies) used in the model
         y_labels (_type:np.array_): the true labels
         y_predicted (_type:np.array_): the predicted values for y_labels
@@ -834,10 +802,7 @@ def calculate_save_metrics_late(config, modality, y_labels, y_predicted, multi, 
                 batch_size = config.batch_size_cl
                 n_epochs = config.n_epochs_cl
                 lr_rate = config.lr_cl
-            else:  # for XGBoost model              
-                batch_size = 0
-                n_epochs = 0
-                lr_rate = 0 
+
         else:
             model_type = config.mri_model
             batch_size = config.batch_size_mri
@@ -855,11 +820,7 @@ def calculate_save_metrics_late(config, modality, y_labels, y_predicted, multi, 
 
     # Compute classification metrics
     conf_matrix = confusion_matrix(y_labels, y_predicted).tolist()  # Convert to list for JSON serialization
-    match config.num_class:
-        case 3: 
-            report = classification_report(y_labels, y_predicted, target_names=['Grade 2', 'Grade 3', 'Grade 4'], output_dict=True)
-        case 2: 
-            report = classification_report(y_labels, y_predicted, target_names=['Grade 4', 'Grade 2&3'], output_dict=True)
+    report = classification_report(y_labels, y_predicted, target_names=['Grade 4', 'Grade 2&3'], output_dict=True)
 
     # comput metrics
     MCC = matthews_corrcoef(y_labels, y_predicted)
@@ -873,7 +834,7 @@ def calculate_save_metrics_late(config, modality, y_labels, y_predicted, multi, 
     with open(f'{modality}_fold_{config.fold}_metrics.txt', 'w') as f:
         f.write(f'Dataset Spec: {axis_dic[config.axis]}_43_56_396_seed_{config.seed}_{config.fold}\n')
         f.write(f'Modality: {modality}\n')
-        f.write(f'Fusion Method: {config.fusion_method}\n')
+        f.write(f'Fusion strategy: {config.fusion_strategy}\n')
         f.write(f'Model: {model_type}\n')
         f.write(f'Batch size: {batch_size}\n')
         f.write(f'Number of epochs: {n_epochs}\n')
@@ -890,7 +851,7 @@ def calculate_save_metrics_late(config, modality, y_labels, y_predicted, multi, 
     results = {
         "config": {
             "dataset": f'{axis_dic[config.axis]}_43_56_396_seed_{config.seed}_{config.fold}',
-            "fusion_method": f'{config.fusion_method}',
+            "fusion_strategy": f'{config.fusion_strategy}',
             "modality": modality,
             "model": model_type,
             "batch_size": batch_size,
@@ -964,7 +925,7 @@ def calculate_save_metrics_intermediate_1(config, modality, y_labels, y_predicte
             config.fused_model (_type:str_): the name of intermediate fusion model
             config.mri_model (_type:str_): the name of model for MRI modality
             config.cl_model (_type:str_): the name of model for Clinical modality
-            config.fusion_method (_type:str_): the fusion method used in the model
+            config.fusion_strategy (_type:str_): the fusion strategy used in the model
             config.axis (_type:int_): the axis of the data, 0 for Sagittal, 1 for Coronal, and 2 for Axial
             config.batch_size_fused (_type:int_): batch size for the fused model
             config.n_epochs_fused (_type:int_): number of epochs for the fused model
@@ -972,6 +933,7 @@ def calculate_save_metrics_intermediate_1(config, modality, y_labels, y_predicte
             config.scale_clinical_modality (_type:bool_): whether to scale the clinical modality or not
             config.seed (_type:str_): for reproducability
             config.num_class (_type:int_): the number of class we have 2 or >2 
+            config.scale_clinical_modality (_type:str_): the scaling method for the clinical modality
         modality(_type:str_): the modality(ies) used in the model
         y_labels (_type:np.ndarray_): the labels
         y_predicted (_type:np.ndarray_): the predicted values for y_labels
@@ -995,11 +957,7 @@ def calculate_save_metrics_intermediate_1(config, modality, y_labels, y_predicte
 
     # Compute classification metrics
     conf_matrix = confusion_matrix(y_labels, y_predicted).tolist()  # Convert to list for JSON serialization
-    match config.num_class:
-        case 3: 
-            report = classification_report(y_labels, y_predicted, target_names=['Grade 2', 'Grade 3', 'Grade 4'], output_dict=True)
-        case 2: 
-            report = classification_report(y_labels, y_predicted, target_names=['Grade 4', 'Grade 2&3'], output_dict=True)
+    report = classification_report(y_labels, y_predicted, target_names=['Grade 4', 'Grade 2&3'], output_dict=True)
 
     # comput MCC
     MCC = matthews_corrcoef(y_labels, y_predicted)
@@ -1135,43 +1093,6 @@ def calculate_avg_attn_weights(y_labels, y_predicted, all_weights)-> Tuple[np.nd
         modality_cont_correct_avg (_type:np.ndarray_): A NumPy array containing the average attention weights for correctly predicted samples across all labels
 
     '''
-    # # Calculate the mean attention weights
-    # modality_cont_avg = all_weights.mean(axis=0).squeeze()
-
-    # # Reshape attention weights to (number of instances in test, number of modalities)
-    # attention_weights = all_weights.squeeze(-1)
-    
-    # df = pd.DataFrame({
-    # 'True_Label': y_labels,
-    # 'Predicted': y_predicted,
-    # 'Attention_Weight_MRI': attention_weights[:, 0],
-    # 'Attention_Weight_Clinical': attention_weights[:, 1],
-    # })
-
-    # # Calculate mean attention weights for each label
-    # MRI_contribution_label_0_avg = df[df['True_Label'] == 0]['Attention_Weight_MRI'].mean()
-    # Clinical_contribution_label_0_avg = df[df['True_Label'] == 0]['Attention_Weight_Clinical'].mean()
-    # modality_cont_label_0_avg = np.array([MRI_contribution_label_0_avg, Clinical_contribution_label_0_avg])
-
-    # MRI_contribution_label_1_avg = df[df['True_Label'] == 1]['Attention_Weight_MRI'].mean()
-    # Clinical_contribution_label_1_avg = df[df['True_Label'] == 1]['Attention_Weight_Clinical'].mean()
-    # modality_cont_label_1_avg = np.array([MRI_contribution_label_1_avg, Clinical_contribution_label_1_avg])
-
-    # # Calculate mean attention weights for the correctly predicted label 0 (grade 4)
-    # MRI_contribution_label_0_correct_avg = df[df['True_Label'] == 0 and df['Predicted'] == 0]['Attention_Weight_MRI'].mean()
-    # Clinical_contribution_label_0_correct_avg = df[df['True_Label'] == 0 and df['Predicted'] == 0]['Attention_Weight_Clinical'].mean()
-    # modality_cont_label_0_correct_avg = np.array([MRI_contribution_label_0_correct_avg, Clinical_contribution_label_0_correct_avg])
-
-    # # Calculate mean attention weights for the correctly predicted label 1 (grade 2&3)
-    # MRI_contribution_label_1_correct_avg = df[df['True_Label'] == 1 and df['Predicted'] == 1]['Attention_Weight_MRI'].mean()
-    # Clinical_contribution_label_1_correct_avg = df[df['True_Label'] == 1 and df['Predicted'] == 1]['Attention_Weight_Clinical'].mean()
-    # modality_cont_label_1_correct_avg = np.array([MRI_contribution_label_1_correct_avg, Clinical_contribution_label_1_correct_avg])
-
-    # # Calculate mean attention weights for the correctly predicted samples
-    # MRI_contribution_correct_avg = df[(df['True_Label'] == 1 and df['Predicted'] == 1) or (df['True_Label'] == 0 and df['Predicted'] == 0)]['Attention_Weight_MRI'].mean()
-    # Clinical_contribution_correct_avg = df[(df['True_Label'] == 1 and df['Predicted'] == 1) or (df['True_Label'] == 0 and df['Predicted'] == 0)]['Attention_Weight_Clinical'].mean()
-    # modality_cont_correct_avg = np.array([MRI_contribution_correct_avg, Clinical_contribution_correct_avg])
-
 
     # Squeeze weights to shape (N, modalities)
     attention_weights = all_weights.squeeze(-1)
@@ -1216,6 +1137,7 @@ def calculate_avg_attn_weights(y_labels, y_predicted, all_weights)-> Tuple[np.nd
     )
 
 
+
 def calculate_mean_std(attn_weights_list)-> Tuple[np.ndarray, np.ndarray]:
     ''' This function calculates the mean of a list of np.ndarray
     Args:
@@ -1238,6 +1160,7 @@ def calculate_mean_std(attn_weights_list)-> Tuple[np.ndarray, np.ndarray]:
     return mean_rounded, std_rounded
 
 
+
 def calculate_save_metrics_intermediate_2(config, modality, y_labels, y_predicted, training_time_spent, test_loss=None, all_weights=None)-> Tuple[float, float, float, float, float]:   
     ''' This function takes two numpy array, one the labels and the other predicted value, and then calculates 
     the performance metrics and saves the reports on three files of .tex, .json, and .csv
@@ -1247,7 +1170,7 @@ def calculate_save_metrics_intermediate_2(config, modality, y_labels, y_predicte
             config.fused_model (_type:str_): the name of intermediate fusion model
             config.mri_model (_type:str_): the name of model for MRI modality
             config.cl_model (_type:str_): the name of model for Clinical modality
-            config.fusion_method (_type:str_): the fusion method used in the model
+            config.fusion_strategy (_type:str_): the fusion strategy used in the model
             config.axis (_type:int_): the axis of the data, 0 for Sagittal, 1 for Coronal, and 2 for Axial
             config.batch_size_fused (_type:int_): batch size for the fused model
             config.n_epochs_fused (_type:int_): number of epochs for the fused model
@@ -1255,6 +1178,7 @@ def calculate_save_metrics_intermediate_2(config, modality, y_labels, y_predicte
             config.scale_clinical_modality (_type:bool_): whether to scale the clinical modality or not
             config.seed (_type:str_): for reproducability
             config.num_class (_type:int_): the number of class we have 2 or >2 
+            config.scale_clinical_modality (_type:str_): the scaling method for the clinical modality
         modality(_type:str_): the modality(ies) used in the model
         y_labels (_type:np.array_): the labels
         y_predicted (_type:np.array_): the predicted values for y_labels
@@ -1273,11 +1197,7 @@ def calculate_save_metrics_intermediate_2(config, modality, y_labels, y_predicte
 
     # Compute classification metrics
     conf_matrix = confusion_matrix(y_labels, y_predicted).tolist()  # Convert to list for JSON serialization
-    match config.num_class:
-        case 3: 
-            report = classification_report(y_labels, y_predicted, target_names=['Grade 2', 'Grade 3', 'Grade 4'], output_dict=True)
-        case 2: 
-            report = classification_report(y_labels, y_predicted, target_names=['Grade 4', 'Grade 2&3'], output_dict=True)
+    report = classification_report(y_labels, y_predicted, target_names=['Grade 4', 'Grade 2&3'], output_dict=True)
 
     # comput metrics
     MCC = matthews_corrcoef(y_labels, y_predicted)
@@ -1303,7 +1223,7 @@ def calculate_save_metrics_intermediate_2(config, modality, y_labels, y_predicte
     # Save metrics to a text file
     with open(f'fold_{config.fold}_metrics.txt', 'w') as f:
         f.write(f'Dataset Spec: {axis_dic[config.axis]}_43_56_396_seed_{config.seed}_{config.fold}\n')
-        f.write(f'Fusion method: {config.fusion_method}\n')
+        f.write(f'Fusion strategy: {config.fusion_strategy}\n')
         f.write(f'Modality: {modality}\n')
         f.write(f'Model: {config.fused_model}\n')
         f.write(f'MRI backbone: {config.mri_model}\n')
@@ -1329,7 +1249,7 @@ def calculate_save_metrics_intermediate_2(config, modality, y_labels, y_predicte
     results = {
         "config": {
             "dataset": f'{axis_dic[config.axis]}_43_56_396_seed_{config.seed}_{config.fold}',
-            "fusion_method": config.fusion_method,
+            "fusion_strategy": config.fusion_strategy,
             "modality": modality,
             "model": config.fused_model,
             "mri_backbone": config.mri_model,
@@ -1391,26 +1311,28 @@ def calculate_save_metrics_intermediate_2(config, modality, y_labels, y_predicte
     return test_accuracy, MCC, f1_w, recall_w, precision_w  # return the metrics for the fused model to be used in the loop over folds
 
 
+
 def calculate_save_metrics_early_1(config, modality, y_labels, y_predicted, training_time_spent, uni, test_loss=None)-> Tuple[float, float, float, float, float]:   
     ''' This function takes two numpy array, one the labels and the other predicted value, and then calculates 
     the performance metrics and saves the reports on three files of .tex, .json, and .csv
 
     Args:
-        config (_type:Config_): the configeration of the problem, the ones used in this class:
+        config (_type:Config_): the configeration of the problem, the ones used in this function:
             config.mri_model (_type:str_): the name of the model for MRI modality
             config.cl_model (_type:str_): the name of the model for Clinical modality
             config.fused_model (_type:str_): the name of early fusion model
             config.n_epochs_mri (_type:int_): number of epochs for MRI modality
             config.n_epochs_cl (_type:int_): number of epochs for Clinical modality
-            config.n_epochs_fused (_type:int_): number of epochs for early fusion model
+            config.n_epochs_fused (_type:int_): number of epochs for the fused model
             config.batch_size_mri (_type:int_): batch size for MRI modality
             config.batch_size_cl (_type:int_): batch size for Clinical modality
-            config.batch_size_fused (_type:int_): batch size for early fusion model
+            config.batch_size_fused (_type:int_): batch size for the fused model
             config.lr_mri (_type:float_): learning rate for MRI modality
             config.lr_cl (_type:float_): learning rate for Clinical modality
-            config.lr_fused (_type:float_): learning rate for early fusion model 
-            config.seed (_type:str_): for reproducability   
-            config.num_class (_type:int_): the number of class we have 2 or >2 
+            config.lr_fused (_type:float_): learning rate for the fused model
+            config.seed (_type:str_): for reproducability
+            config.num_class (_type:int_): the number of class we have 2 or >2
+            config.scale_clinical_modality (_type:str_): the scaling method for the clinical modality
         modality(_type:str_): the modality(ies) used in the model
         y_labels (_type:np.array_): the labels
         y_predicted (_type:np.array_): the predicted values for y_labels
@@ -1443,14 +1365,9 @@ def calculate_save_metrics_early_1(config, modality, y_labels, y_predicted, trai
         n_batches = config.batch_size_fused
         lr_rate = config.lr_fused
 
-
     # Compute classification metrics
     conf_matrix = confusion_matrix(y_labels, y_predicted).tolist()  # Convert to list for JSON serialization
-    match config.num_class:
-        case 3: 
-            report = classification_report(y_labels, y_predicted, target_names=['Grade 2', 'Grade 3', 'Grade 4'], output_dict=True)
-        case 2: 
-            report = classification_report(y_labels, y_predicted, target_names=['Grade 4', 'Grade 2&3'], output_dict=True)
+    report = classification_report(y_labels, y_predicted, target_names=['Grade 4', 'Grade 2&3'], output_dict=True)
 
     # comput metrics
     MCC = matthews_corrcoef(y_labels, y_predicted)
@@ -1463,7 +1380,7 @@ def calculate_save_metrics_early_1(config, modality, y_labels, y_predicted, trai
     # Save metrics to a text file
     with open(f'{modality}_{config.fold}_metrics.txt', 'w') as f:
         f.write(f'Dataset Spec: {axis_dic[config.axis]}_43_56_396_seed_{config.seed}_{config.fold}\n')
-        f.write(f'Fusion Method: {config.fusion_method}\n')
+        f.write(f'Fusion Strategy: {config.fusion_strategy}\n')
         f.write(f'Modality: {modality}\n')
         f.write(f'Model: {model_type}\n')
         f.write(f'Batch size: {n_batches}\n')
@@ -1482,7 +1399,7 @@ def calculate_save_metrics_early_1(config, modality, y_labels, y_predicted, trai
     results = {
         "config": {
             "dataset": f'{axis_dic[config.axis]}_43_56_396_seed_{config.seed}_{config.fold}',
-            "fusion_method": config.fusion_method,
+            "fusion_strategy": config.fusion_strategy,
             "modality": modality,
             "model": model_type,
             "batch_size": n_batches,
@@ -1544,14 +1461,20 @@ def calculate_save_metrics_early_1(config, modality, y_labels, y_predicted, trai
 
 
 
-def calculate_save_metrics_early_2(config, modality, y_labels, y_predicted, training_time_spent, test_loss=None) -> Tuple[float, float, float, float, float]:   
+def calculate_save_metrics_early_2(config, modality, y_labels, y_predicted, training_time_spent, test_loss=None)-> Tuple[float, float, float, float, float]:   
     ''' This function takes two numpy array, one the labels and the other predicted value, and then calculates 
     the performance metrics and saves the reports on three files of .tex, .json, and .csv
 
     Args:
-        config (_type:Config_): the configeration of the problem, the ones used in this class:
+        config (_type:Config_): the configeration of the problem, the ones used in this function:
             config.seed (_type:str_): for reproducability
-            config.num_class (_type:int_): the number of class we have 2 or >2 
+            config.num_class (_type:int_): the number of class we have 2 or >2
+            config.fusion_strategy (_type:str_): the fusion strategy used in the model
+            config.fused_model (_type:str_): the name of early fusion model
+            config.n_epochs_fused (_type:int_): number of epochs for the fused model
+            config.batch_size_fused (_type:int_): batch size for the fused model
+            config.lr_fused (_type:float_): learning rate for the fused model
+            config.scale_clinical_modality (_type:str_): the scaling method for the clinical modality
         modality(_type:str_): the modality(ies) used in the model
         y_labels (_type:np.array_): the labels
         y_predicted (_type:np.array_): the predicted values for y_labels
@@ -1570,11 +1493,7 @@ def calculate_save_metrics_early_2(config, modality, y_labels, y_predicted, trai
 
     # Compute classification metrics
     conf_matrix = confusion_matrix(y_labels, y_predicted).tolist()  # Convert to list for JSON serialization
-    match config.num_class:
-        case 3: 
-            report = classification_report(y_labels, y_predicted, target_names=['Grade 2', 'Grade 3', 'Grade 4'], output_dict=True)
-        case 2: 
-            report = classification_report(y_labels, y_predicted, target_names=['Grade 4', 'Grade 2&3'], output_dict=True)
+    report = classification_report(y_labels, y_predicted, target_names=['Grade 4', 'Grade 2&3'], output_dict=True)
 
     # comput metrics
     MCC = matthews_corrcoef(y_labels, y_predicted)
@@ -1587,7 +1506,7 @@ def calculate_save_metrics_early_2(config, modality, y_labels, y_predicted, trai
     # Save metrics to a text file
     with open(f'fold_{config.fold}_metrics.txt', 'w') as f:
         f.write(f'Dataset Spec: {axis_dic[config.axis]}_43_56_396_seed_{config.seed}_{config.fold}\n')
-        f.write(f'Fusion Method: {config.fusion_method}\n')
+        f.write(f'Fusion strategy: {config.fusion_strategy}\n')
         f.write(f'Modality: {modality}\n')
         f.write(f'Model: {config.fused_model}\n')
         f.write(f'Batch size: {config.batch_size_fused}\n')
@@ -1606,7 +1525,7 @@ def calculate_save_metrics_early_2(config, modality, y_labels, y_predicted, trai
     results = {
         "config": {
             "dataset": f'{axis_dic[config.axis]}_43_56_396_seed_{config.seed}_{config.fold}',
-            "fusion_method": config.fusion_method,
+            "fusion_strategy": config.fusion_strategy,
             "modality": modality,
             "model": config.fused_model,
             "batch_size": config.batch_size_fused,
