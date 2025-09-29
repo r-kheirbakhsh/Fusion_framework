@@ -110,23 +110,14 @@ class UCSFslice_intermediate_1_fusion(Dataset):
         label = self.metadata_df.iloc[idx, self.config.label] 
         # No one-hot encoding, because CrossEntropyLoss (for multiclass classification) accepts labels as 0, 1, 2, ...
         
-        # NOTE: This part of code is specific to have column 'WHO_grade' as label, not other labels
-        if self.config.num_class == 3:
-            match label:
-                case 4:
-                    label= 2
-                case 3:
-                    label= 1
-                case 2:
-                    label= 0
-        else:
-            match label:
-                case 4:
-                    label= 0
-                case 3:
-                    label= 1
-                case 2:
-                    label= 1
+        # NOTE: This part of code is specific to binary classification
+        match label:
+            case 4:
+                label= 0
+            case 3:
+                label= 1
+            case 2:
+                label= 1
 
         label_tensor= torch.tensor(label, dtype=torch.long) # the type should be Tensor
 
