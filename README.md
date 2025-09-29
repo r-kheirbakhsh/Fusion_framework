@@ -96,6 +96,16 @@ To construct the input data for our framework, we leveraged the provided brain m
     ```    
 
 ## Table of contents
+- [config](config/) — Configuration files (e.g. default hyperparameters, paths)  
+- [dataloader](dataloader/) — Data loading and preprocessing modules (MRI, clinical, slice extraction)  
+- [fusion](fusion/) — Implementation of fusion methods (early, intermediate, late, attention blocks)  
+- [model](model/) — Neural network model definitions (DenseNet, AutoInt, fused models)  
+- [trainer](trainer/) — Training, validation, and testing logic (train_test pipeline, loss, optimization)  
+- [utils](utils/) — Utility functions (metrics, logging, helpers)  
+- [`run_experiment.sh`](run_experiment.sh) — Bash script wrapper to run full experiments  
+- [`train_test.py`](train_test.py) — Main entry point for training/testing with command-line interface  
+- [README.md](README.md) — Project overview, instructions, and documentation
+
 ## How to run the code
 The entry point to the framework is the train_test.py file. Ensure that the UCSF dataset (MRI modalities and clinical metadata) is preprocessed and organized as described in the "Dataset Preparation". Update the value of the arguments in the run_experiments.sh script and ensure that the dataset pathes point to your local copies. The code can be run by:
 ```
