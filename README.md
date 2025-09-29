@@ -8,17 +8,23 @@ The fusion architectures in our framework are illustrated in the following figur
 
 
 ## Dataset used
-This project is based on the UCSF glioma dataset, which provides preprocessed MRI scans and associated clinical information. We use four MRI modalities — T1, T1c, T2, and FLAIR — along with two clinical variables: sex and age. To construct the input data for our framework, we leveraged the provided tumor segmentation masks to extract 2D slices from each MRI sequence that contain tumor regions. Since the MRI scans are already preprocessed in the UCSF dataset, no additional preprocessing was applied beyond modality-wise intensity scaling. For the clinical features, we applied min–max scaling to normalize age values, while sex was already encoded as binary (0/1). This prepared dataset serves as the input to our multimodal fusion framework.
+This project is based on the the University of California, San Francisco Preoperative Diffuse Glioma MRI (UCSF-PDGM) dataset [[1]](#1), which includes 501 adult patients with WHO grade 2-4 diffuse gliomas (43, 56, and 396 patients, respectively, for grades 2, 3, and 4) who underwent preoperative MRI and resection between 2015 and 2021. The dataset provides standardized 3T MRI scans across multiple sequences, including T1 (pre- and post-contrast), T2, and FLAIR, along with advanced modalities such as DWI, SWI, and perfusion imaging. It also contains clinical and molecular data (age, sex, tumour grade, IDH mutation, MGMT methylation) and expert tumour segmentations.   To construct the input data for our framework, we leveraged the provided tumor segmentation masks to extract 2D slices from each MRI sequence that contain tumor regions. Since the MRI scans are already preprocessed in the UCSF dataset, no additional preprocessing was applied beyond modality-wise intensity scaling. For the clinical features, we applied min–max scaling to normalize age values, while sex was already encoded as binary (0/1). This prepared dataset serves as the input to our multimodal fusion framework.
 
 Note: The UCSF glioma dataset is not publicly available. Access requires permission from the data providers, and researchers must request approval directly from the UCSF repository.
 
+## References
+<a id="1">[1]</a> 
+Calabrese, E., Villanueva-Meyer, J.E., Rudie, J.D., Rauschecker, A.M., Baid, U., Bakas, S., Cha, S., Mongan, J.T. and Hess, C.P., 2022. The University of California San Francisco preoperative diffuse glioma MRI dataset. Radiology: Artificial Intelligence, 4(6), p.e220058.
+
 ## Datset preparation
-Once you have access to the UCSF glioma dataset, the following preprocessing steps are required to prepare the data for training with this framework:
+To construct the input data for our framework, we leveraged the provided brain masks and tumor segmentation masks. Once you have access to the UCSF glioma dataset, the following preprocessing steps are required to prepare the data for training with this framework:
 
 1. MRI Slice Extraction
-    * Use the provided tumor segmentation masks to identify slices containing tumor regions.
+    * Use the provided bran masks to identify slices containing brain. 
     * Extract the corresponding slices from each MRI modality (T1, T1c, T2, FLAIR).
-    * Store the slices in .npz format, one file for each modality.
+    * Store the slices in .npz format, one file for each modality according to the dataset structure (refer to Dataset Structure for more details).
+    * Use the provided tumor segmentation masks to identify slices containing tumor regions.
+    * Save the paths to the slices with tumour in a CSV file (refer to Dataset Structure for more details).
 
 2. MRI Preprocessing
     * Since the UCSF dataset already provides preprocessed MRI scans, no additional preprocessing (e.g., skull-stripping, registration, bias-field correction) is required.
@@ -32,7 +38,7 @@ Once you have access to the UCSF glioma dataset, the following preprocessing ste
     * Organize the processed data so that each patient has a unique ID, with MRI slices stored in a consistent folder structure and clinical features stored in a tabular format (e.g., CSV).
     * The codebase includes dataset classes and loaders to handle this structure automatically.
     * The processed dataset should be organized as follows:
-    
+
 ```
         UCSF-PDGM-SLICED/
         │
