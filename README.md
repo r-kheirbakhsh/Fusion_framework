@@ -111,7 +111,7 @@ The entry point to the framework is the train_test.py file. Ensure that the UCSF
 ```
 chmod +x run_experiment.sh
 ``` 
-Training/validation logs are saved to log_<seed>.log. Model checkpoints and metrics are written to the corresponding experiment directory. In addition, the framework uses Wandb for saving the training and validation logs, make sure that you are connected to you Wandb account or change the code to avoid logging there.
+Training/validation logs are saved to log_\<seed\>.log. Model checkpoints and metrics are written to the corresponding experiment directory. In addition, the framework uses Wandb for saving the training and validation logs, make sure that you are connected to you Wandb account or change the code to avoid logging there.
 
 ## References
 <a id="1">[1]</a> 
