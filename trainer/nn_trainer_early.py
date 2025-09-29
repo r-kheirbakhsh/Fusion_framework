@@ -79,6 +79,7 @@ class nn_Trainer_early:
             batch_size = self.config.batch_size_fused
  
             # Initialize lists to store training history on wandb
+            ## if you do not want logging to Wandb, comment from here
             wandb.init (
                 # Set the wandb project where this run will be logged
                 project = self.config.project_name,
@@ -99,6 +100,7 @@ class nn_Trainer_early:
                     'number of gpus': self.config.n_gpu
                 }
             )
+            ## if you do not want logging to Wandb, comment up to here
 
         
         train_losses = []
@@ -200,11 +202,11 @@ class nn_Trainer_early:
                 f'Train_Loss: {train_loss:.4f}, Train_Accuracy: {train_accuracy:.2%}, Train_MCC: {train_mcc:.4f}, '
                 f'Val_Loss: {val_loss:.4f}, Val_Accuracy: {val_accuracy:.2%}, Val_MCC: {val_mcc:.4f}')
 
-
+            ## if you do not want logging to Wandb, comment this part from here
             if self.uni == 0:
                 # Log metrics to wandb
                 wandb.log({'Train Loss': train_loss, 'Val Loss': val_loss, 'Train Accuracy': train_accuracy, 'Val Accuracy': val_accuracy, 'Train MCC': train_mcc, 'Val MCC': val_mcc})
-
+            ## if you do not want logging to Wandb, comment up to here
 
             # Early stopping logic
             if val_loss < best_val_loss - 1e-4: # a delta threshold to avoid stopping on tiny fluctuations  

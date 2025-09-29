@@ -80,7 +80,7 @@ To construct the input data for our framework, we leveraged the provided brain m
 
     ```
     dataset_metadata.csv:
-    
+
     ID,slice_name,sex,age,WHO_grade
     0004,slice_81,1,66,4
     0004,slice_82,1,66,4
@@ -97,6 +97,11 @@ To construct the input data for our framework, we leveraged the provided brain m
 
 ## Table of contents
 ## How to run the code
+The entry point to the framework is the train_test.py file. Ensure that the UCSF dataset (MRI modalities and clinical metadata) is preprocessed and organized as described in the "Dataset Preparation". Update the value of the arguments in the run_experiments.sh script and ensure that the dataset pathes point to your local copies. The code can be run by:
+```
+chmod +x run_experiment.sh
+``` 
+Training/validation logs are saved to log_<seed>.log. Model checkpoints and metrics are written to the corresponding experiment directory. In addition, the framework uses Wandb for saving the training and validation logs, make sure that you are connected to you Wandb account or change the code to avoid logging there.
 
 ## References
 <a id="1">[1]</a> 

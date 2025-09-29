@@ -70,6 +70,7 @@ class nn_Trainer_late:
 
         axis_dic = {0: "Sagittal", 1: "Coronal", 2: "Axial"}  
         # Initialize lists to store training history on wandb
+        ## if you do not want logging to Wandb, comment from here
         wandb.init (
             # Set the wandb project where this run will be logged
             project = self.config.project_name,
@@ -90,6 +91,7 @@ class nn_Trainer_late:
                 'number of gpus': self.config.n_gpu
             }
         )
+        ## if you do not want logging to Wandb, comment up to here
 
 
         train_losses = []
@@ -187,6 +189,7 @@ class nn_Trainer_late:
 
 
             # Log metrics to wandb
+            ## if you do not want logging to Wandb, comment next line
             wandb.log({'Train Loss': train_loss, 'Val Loss': val_loss, 'Train Accuracy': train_accuracy, 'Val Accuracy': val_accuracy, 'Train MCC': train_mcc, 'Val MCC': val_mcc})
 
 
