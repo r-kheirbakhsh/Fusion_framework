@@ -32,24 +32,50 @@ Once you have access to the UCSF glioma dataset, the following preprocessing ste
     * Organize the processed data so that each patient has a unique ID, with MRI slices stored in a consistent folder structure and clinical features stored in a tabular format (e.g., CSV).
     * The codebase includes dataset classes and loaders to handle this structure automatically.
     * The processed dataset should be organized as follows:
-        data/
+    
+```
+        UCSF-PDGM-SLICED/
         │
-        ├── clinical_data.csv              # Clinical features (PatientID, Sex, Age, TumorGrade)
+        ├── UCSF-PDGM-0004/
+        │   ├──Axial/
+        │       ├──T1_bias/
+        │           ├──slice_22.npz
+        │           ├──slice_23.npz
+        │           ├── ...
+        │       ├──T1c_bias/
+        │           ├──slice_22.npz
+        │           ├──slice_23.npz
+        │           ├── ...
+        │       ├──T2_bias/
+        │           ├──slice_22.npz
+        │           ├──slice_23.npz
+        │           ├── ...
+        │       ├──FLAIR_bias/
+        │           ├──slice_22.npz
+        │           ├──slice_23.npz
+        │           ├── ...
         │
-        ├── patient_001/
-        │   ├── T1_bias.npz
-        │   ├── T1c_bias.npz
-        │   ├── T2_bias.npz
-        │   ├── FLAIR_bias.npz
-        │
-        ├── patient_002/
-        │   ├── T1_bias.npz
-        │   ├── T1c_bias.npz
-        │   ├── T2_bias.npz
-        │   ├── FLAIR_bias.npz
+        ├── UCSF-PDGM-0005/
+        │   ├──Axial/
+        │       ├──T1_bias/
+        │           ├──slice_10.npz
+        │           ├──slice_11.npz
+        │           ├── ...
+        │       ├──T1c_bias/
+        │           ├──slice_10.npz
+        │           ├──slice_11.npz
+        │           ├── ...
+        │       ├──T2_bias/
+        │           ├──slice_10.npz
+        │           ├──slice_11.npz
+        │           ├── ...
+        │       ├──FLAIR_bias/
+        │           ├──slice_10.npz
+        │           ├──slice_11.npz
+        │           ├── ...        
         │
         └── ... (and so on for each patient)
-
+```
 
 ## Table of contents
 ## How to run the code
