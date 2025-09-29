@@ -20,7 +20,7 @@ To construct the input data for our framework, we leveraged the provided brain m
     * Extract the corresponding 2D slices for each MRI modality (T1, T1c, T2, FLAIR) from the *_bias.nii.gz 3D files. In our experiments we uses Axia plane, if you want to choose other planes, change the struchture/code accordingly.
     * Store the slices in .npz format, one file for each modality according to the dataset structure (refer to "4. Dataset Structure" for more details).
     * Use the provided tumor segmentation masks to identify slices containing tumor regions.
-    * Save the paths to the slices with tumour in a CSV file (refer to "4. Dataset Structure" for more details).
+    * Save the indexis to the slices with tumour in a CSV file (refer to "4. Dataset Structure" for more details).
 
 2. MRI Preprocessing
     * Since the UCSF dataset already provides preprocessed MRI scans (in *_bias.nii.gz files), no additional preprocessing (e.g., skull-stripping, registration, bias-field correction) is required.
@@ -33,7 +33,7 @@ To construct the input data for our framework, we leveraged the provided brain m
 4. Dataset Structure
     * Organize the 2D MRi slices so that each patient has a unique ID, with MRI slices stored in a consistent folder as shown bellow:
 
-```
+    ```
         UCSF-PDGM-SLICED/
         │
         ├── UCSF-PDGM-0004/
@@ -75,7 +75,23 @@ To construct the input data for our framework, we leveraged the provided brain m
         │           ├── ...        
         │
         └── ... (and so on for each patient)
-```
+    ```
+    * Organize the CSV file containing the metadata of the dataset for the framework with the following columns:
+
+    ```
+    ID,slice_name,sex,age,WHO_grade
+    0004,slice_81,1,66,4
+    0004,slice_82,1,66,4
+    ...
+    0004,slice_126,1,66,4
+    0005,slice_59,0,80,4
+    ...
+    0005,slice_116,0,80,4
+    0007,slice_46,1,70,4
+    ...
+    0007,slice_124,1,70,4
+    ... (and so on for each patient)
+    ```    
 
 ## Table of contents
 ## How to run the code
