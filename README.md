@@ -54,7 +54,7 @@ To construct the input data for our framework, we leveraged the provided brain m
         │           ├──slice_22.npz
         │           ├──slice_23.npz
         │           ├── ...
-        <!-- │
+        │
         ├── UCSF-PDGM-0005/
         │   ├──Axial/
         │       ├──T1_bias/
@@ -72,7 +72,7 @@ To construct the input data for our framework, we leveraged the provided brain m
         │       ├──FLAIR_bias/
         │           ├──slice_10.npz
         │           ├──slice_11.npz
-        │           ├── ...         -->
+        │           ├── ...        
         │
         └── ... (and so on for each patient)
     ```
