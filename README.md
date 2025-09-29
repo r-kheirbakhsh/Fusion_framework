@@ -79,6 +79,8 @@ To construct the input data for our framework, we leveraged the provided brain m
     * Organize the CSV file containing the metadata of the dataset for the framework with the following columns:
 
     ```
+    dataset_metadata.csv:
+    
     ID,slice_name,sex,age,WHO_grade
     0004,slice_81,1,66,4
     0004,slice_82,1,66,4

@@ -6,8 +6,8 @@ def parse_args():
     
     args.add_argument('--project_name', default=None, type=str)
     args.add_argument('--fusion_strategy', default='ELF', type=str) # it consists of ['ELF', 'ERF', 'ISF', 'IMF', 'L']
-    args.add_argument('--dataset_csv_path', default=None, type=str)   # the path to the csv file containing the metadata of each slice (columns: ID,slice_name,sex,age,WHO_grade,final_diagnosis,MGMT_status,1p/19q,IDH)
-    args.add_argument('--train_csv_path', default=None, type=str)
+    args.add_argument('--dataset_csv_path', default=None, type=str)   # the path to the csv file containing the metadata of each slice (columns: ID,slice_name,sex,age,WHO_grade)
+    args.add_argument('--train_csv_path', default=None, type=str)  # the path to the csv file containing the metadata of each slice for training (if )
     args.add_argument('--val_csv_path', default=None, type=str)
     args.add_argument('--test_csv_path', default=None, type=str)
     args.add_argument('--dataset_image_path', default=None, type=str)  # the path to the main folder contaning the sliced MRI scans 
