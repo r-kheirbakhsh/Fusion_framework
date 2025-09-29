@@ -98,7 +98,7 @@ To construct the input data for our framework, we leveraged the provided brain m
 ## Table of contents
 - [config](config/) — Configuration files (e.g. default hyperparameters, paths)  
 - [dataloader](dataloader/) — Data loading and preprocessing modules (MRI, clinical, slice extraction)  
-- [fusion](fusion/) — Implementation of fusion methods (early, intermediate, late, attention blocks)  
+- [fusion](fusion/) — Implementation of fusion methods (just for late fusion, the other stategies do fusion in the neural network architectures)  
 - [model](model/) — Neural network model definitions (DenseNet, AutoInt, fused models)  
 - [trainer](trainer/) — Training, validation, and testing logic (train_test pipeline, loss, optimization)  
 - [utils](utils/) — Utility functions (metrics, logging, helpers)  
