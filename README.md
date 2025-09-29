@@ -16,30 +16,40 @@ Note: The UCSF glioma dataset is not publicly available. Access requires permiss
 Once you have access to the UCSF glioma dataset, the following preprocessing steps are required to prepare the data for training with this framework:
 
 1. MRI Slice Extraction
-
-* Use the provided tumor segmentation masks to identify slices containing tumor regions.
-
-* Extract the corresponding slices from each MRI modality (T1, T1c, T2, FLAIR).
-
-* Store the slices in .npz format, where each file contains four channels corresponding to the four MRI modalities.
+    * Use the provided tumor segmentation masks to identify slices containing tumor regions.
+    * Extract the corresponding slices from each MRI modality (T1, T1c, T2, FLAIR).
+    * Store the slices in .npz format, one file for each modality.
 
 2. MRI Preprocessing
-
-* Since the UCSF dataset already provides preprocessed MRI scans, no additional preprocessing (e.g., skull-stripping, registration, bias-field correction) is required.
-
-* Apply modality-wise intensity scaling to normalize the values across MRI modalities.
+    * Since the UCSF dataset already provides preprocessed MRI scans, no additional preprocessing (e.g., skull-stripping, registration, bias-field correction) is required.
+    * Modality-wise intensity scaling to normalize the values across MRI modalities will be done in the dataloaders of the framework.
 
 3. Clinical Data Preprocessing
-
-* Encode sex as binary (0 = female, 1 = male).
-
-* Apply min–max scaling to normalize age values between 0 and 1.
+    * Encode sex as binary (0 = female, 1 = male).
+    * Min–max scaling to normalize age values between 0 and 1 will be done by the framework.
 
 4. Dataset Structure
+    * Organize the processed data so that each patient has a unique ID, with MRI slices stored in a consistent folder structure and clinical features stored in a tabular format (e.g., CSV).
+    * The codebase includes dataset classes and loaders to handle this structure automatically.
+    * The processed dataset should be organized as follows:
+        data/
+        │
+        ├── clinical_data.csv              # Clinical features (PatientID, Sex, Age, TumorGrade)
+        │
+        ├── patient_001/
+        │   ├── T1_bias.npz
+        │   ├── T1c_bias.npz
+        │   ├── T2_bias.npz
+        │   ├── FLAIR_bias.npz
+        │
+        ├── patient_002/
+        │   ├── T1_bias.npz
+        │   ├── T1c_bias.npz
+        │   ├── T2_bias.npz
+        │   ├── FLAIR_bias.npz
+        │
+        └── ... (and so on for each patient)
 
-* Organize the processed data so that each patient has a unique ID, with MRI slices stored in a consistent folder structure and clinical features stored in a tabular format (e.g., CSV).
-
-* The codebase includes dataset classes and loaders to handle this structure automatically.
 
 ## Table of contents
 ## How to run the code
