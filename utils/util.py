@@ -9,7 +9,7 @@ import torch
 from torch.utils.data import DataLoader, WeightedRandomSampler
 from collections import Counter
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, matthews_corrcoef, log_loss
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, matthews_corrcoef
 from sklearn.preprocessing import QuantileTransformer
 
 from dataloader import UCSFslice_late_fusion, UCSFslice_intermediate_1_fusion, UCSFslice_intermediate_2_fusion, UCSFslice_early_2_fusion
@@ -895,7 +895,7 @@ def calculate_save_metrics_late(config, modality, y_labels, y_predicted, multi, 
     # Convert the combined dictionary into a DataFrame
     df = pd.DataFrame([combined_data])  # Create a DataFrame with one row
 
-    csv_file_path = '/mnt/storage/reyhaneh/experiments/gl_classification/Modality_fusion_framework_experiments/AICS25/late_results.csv' 
+    csv_file_path = 'late_results.csv' 
     # Load the existing CSV file
     try:
         csv_df = pd.read_csv(csv_file_path)
@@ -916,7 +916,8 @@ def calculate_save_metrics_late(config, modality, y_labels, y_predicted, multi, 
 
 
 
-def calculate_save_metrics_intermediate_1(config, modality, y_labels, y_predicted, training_time_spent, test_loss=None, all_weights=None)-> Tuple[float, float, float, float, float, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:   
+def calculate_save_metrics_intermediate_1(config, modality, y_labels, y_predicted, training_time_spent, test_loss=None, \
+                            all_weights=None)-> Tuple[float, float, float, float, float, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:   
     ''' This function takes two numpy array, one the labels and the other predicted value, and then calculates 
     the performance metrics and saves the reports on three files of .tex, .json, and .csv
 
@@ -1055,7 +1056,7 @@ def calculate_save_metrics_intermediate_1(config, modality, y_labels, y_predicte
     # Convert the combined dictionary into a DataFrame
     df = pd.DataFrame([combined_data])  # Create a DataFrame with one row
 
-    csv_file_path = '/mnt/storage/reyhaneh/experiments/gl_classification/Modality_fusion_framework_experiments/AICS25/intermediate_1_results.csv'
+    csv_file_path = 'intermediate_1_results.csv'
     try:
         csv_df = pd.read_csv(csv_file_path)
     except FileNotFoundError:
@@ -1295,7 +1296,7 @@ def calculate_save_metrics_intermediate_2(config, modality, y_labels, y_predicte
     # Convert the combined dictionary into a DataFrame
     df = pd.DataFrame([combined_data])  # Create a DataFrame with one row
 
-    csv_file_path = '/mnt/storage/reyhaneh/experiments/gl_classification/Modality_fusion_framework_experiments/AICS25/intermediate_2_results.csv'
+    csv_file_path = 'intermediate_2_results.csv'
     try:
         csv_df = pd.read_csv(csv_file_path)
     except FileNotFoundError:
@@ -1443,7 +1444,7 @@ def calculate_save_metrics_early_1(config, modality, y_labels, y_predicted, trai
     # Convert the combined dictionary into a DataFrame
     df = pd.DataFrame([combined_data])  # Create a DataFrame with one row
 
-    csv_file_path = '/mnt/storage/reyhaneh/experiments/gl_classification/Modality_fusion_framework_experiments/AICS25/early_1_results.csv'
+    csv_file_path = 'early_1_results.csv'
     # Load the existing CSV file
     try:
         csv_df = pd.read_csv(csv_file_path)
@@ -1569,7 +1570,7 @@ def calculate_save_metrics_early_2(config, modality, y_labels, y_predicted, trai
     # Convert the combined dictionary into a DataFrame
     df = pd.DataFrame([combined_data])  # Create a DataFrame with one row
 
-    csv_file_path = '/mnt/storage/reyhaneh/experiments/gl_classification/Modality_fusion_framework_experiments/AICS25/early_2_results.csv'
+    csv_file_path = 'early_2_results.csv'
     # Load the existing CSV file
     try:
         csv_df = pd.read_csv(csv_file_path)

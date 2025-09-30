@@ -17,13 +17,13 @@ To construct the input data for our framework, we leveraged the provided brain m
 
 1. MRI Slice Extraction
     * Use the provided brain masks to identify slices containing brain. 
-    * Extract the corresponding 2D slices for each MRI modality (T1, T1c, T2, FLAIR) from the *_bias.nii.gz 3D files. In our experiments we uses Axia plane, if you want to choose other planes, change the struchture/code accordingly.
-    * Store the slices in .npz format, one file for each modality according to the dataset structure (refer to "4. Dataset Structure" for more details).
+    * Extract the corresponding 2D slices for each MRI modality (T1, T1c, T2, FLAIR) from the 3D files of ***\*_bias.nii.gz***. In our experiments we uses Axial plane, if you want to choose other planes, change the struchture/code accordingly.
+    * Store the slices in ***.npz*** format, one file for each modality according to the dataset structure (refer to **"4. Dataset Structure"** for more details).
     * Use the provided tumor segmentation masks to identify slices containing tumor regions.
-    * Save the indexis to the slices with tumour in a CSV file (refer to "4. Dataset Structure" for more details).
+    * Save the indexis to the slices with tumour in a CSV file (refer to **"4. Dataset Structure"** for more details).
 
 2. MRI Preprocessing
-    * Since the UCSF dataset already provides preprocessed MRI scans (in *_bias.nii.gz files), no additional preprocessing (e.g., skull-stripping, registration, bias-field correction) is required.
+    * Since the UCSF dataset already provides preprocessed MRI scans (in ***\*_bias.nii.gz*** files), no additional preprocessing (e.g., skull-stripping, registration, bias-field correction) is required.
     * Modality-wise intensity scaling to normalize the values across MRI modalities will be done in the dataloaders of the framework.
 
 3. Clinical Data Preprocessing
@@ -31,7 +31,7 @@ To construct the input data for our framework, we leveraged the provided brain m
     * Min–max scaling to normalize age values between 0 and 1 will be done by the framework.
 
 4. Dataset Structure
-    * Organize the 2D MRi slices so that each patient has a unique ID, with MRI slices stored in a consistent folder as shown bellow:
+    * Organize the 2D MRI slices so that each patient has a unique ID, with MRI slices stored in a consistent folder as shown bellow:
 
     ```
         UCSF-PDGM-SLICED/
@@ -96,10 +96,11 @@ To construct the input data for our framework, we leveraged the provided brain m
     ```    
 
 ## Table of contents
+The code in this repository is organised as follow:
 - [config](config/) — Configuration files (e.g. default hyperparameters, paths)  
 - [dataloader](dataloader/) — Data loading and preprocessing modules (MRI, clinical, slice extraction)  
 - [fusion](fusion/) — Implementation of fusion methods (just for late fusion, the other stategies do fusion in the neural network architectures)  
-- [model](model/) — Neural network model definitions (DenseNet, AutoInt, fused models)  
+- [model](model/) — Neural network model definitions (DenseNet, AutoInt, fusion architectures)  
 - [trainer](trainer/) — Training, validation, and testing logic (train_test pipeline, loss, optimization)  
 - [utils](utils/) — Utility functions (metrics, logging, helpers)  
 - [`run_experiment.sh`](run_experiment.sh) — Bash script wrapper to run full experiments  
@@ -107,11 +108,11 @@ To construct the input data for our framework, we leveraged the provided brain m
 - [README.md](README.md) — Project overview, instructions, and documentation
 
 ## How to run the code
-The entry point to the framework is the * ***train_test.py*** * file. Ensure that the UCSF dataset (MRI modalities and clinical metadata) is preprocessed and organized as described in the "Dataset Preparation". Update the value of the arguments in the * ***run_experiments.sh*** * script and ensure that the dataset pathes point to your local copies. The code can be run by:
+The entry point to the framework is the ***train_test.py*** file. Ensure that the UCSF dataset (MRI modalities and clinical metadata) is preprocessed and organized as described in the **"Dataset Preparation"**. Update the value of the arguments in the ***run_experiments.sh*** script and ensure that the dataset pathes point to your local copies. The code can be run by:
 ```
 chmod +x run_experiment.sh
 ``` 
-Training/validation logs are saved to * ***log_\<seed\>._log*** *. Model checkpoints and metrics are written to the corresponding experiment directory. In addition, the framework uses Wandb for saving the training and validation logs, make sure that you are connected to you Wandb account or change the code to avoid logging there.
+Training/validation logs are saved to ***log_\<seed\>._log***. Model checkpoints and metrics are written to the corresponding experiment directory. In addition, the framework uses Wandb for saving the training and validation logs, make sure that you are connected to you Wandb account or change the code to avoid logging there.
 
 ## References
 <a id="1">[1]</a> 
