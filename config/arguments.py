@@ -5,7 +5,7 @@ def parse_args():
     args = argparse.ArgumentParser(description='Modality fusion framework')
 
     args.add_argument('--project_name', default=None, type=str)         # the name of the project, it will be used for logging to Wandb
-    args.add_argument('--fusion_strategy', default='ELF', type=str)     # it consists of ['ELF', 'ERF', 'ISF', 'IMF', 'L']
+    args.add_argument('--fusion_strategy', default='ELF', type=str)     # possible values are: 'ELF', 'ERF', 'ISF', 'IMF', 'L'
     args.add_argument('--dataset_csv_path', default=None, type=str)     # the path to the csv file containing the metadata of each slice (columns: ID,slice_name,sex,age,WHO_grade)
     args.add_argument('--train_csv_path', default=None, type=str)       # the path to the csv file containing the metadata of each slice for training (if needed)
     args.add_argument('--val_csv_path', default=None, type=str)         # the path to the csv file containing the metadata of each slice for validation (if needed)
@@ -18,7 +18,7 @@ def parse_args():
     args.add_argument('--scale_clinical_modality', default='Minmax', type=str)  # e.g. Minmax
     args.add_argument('--mri_model', default="DenseNet121", type=str)   # the architecture of NN for MRI encoder
     args.add_argument('--cl_model', default="AutoInt", type=str)        # the architecture of NN for the Clinical encoder
-    args.add_argument('--fused_model', default="MLP", type=str)         # the model for fusion of the modalities it consists of ['MLP', 'AutoInt', 'dneseNet121', 'Inter_1_concat', 'Inter_2_concat', 'Inter_1_concat_attn']
+    args.add_argument('--fused_model', default="MLP", type=str)         # the model for fusion of the modalities, possible values are: 'MLP', 'AutoInt', 'DenseNet121', 'Inter_1_concat', 'Inter_2_concat', 'Inter_1_concat_attn'
     args.add_argument('--pretrained', default=0, type=int)      # pretrained mri_model: 1, non-pretrained mri_model: 0 
     args.add_argument('--lr_mri', default=1e-6, type=float)     # learning rate for mri_model
     args.add_argument('--lr_cl', default=1e-6, type=float)      # learning rate for cl_model

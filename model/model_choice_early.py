@@ -49,7 +49,7 @@ def model_selection_early(config, model_type):
         hidden_size = 1024  # Increased from 32 hidden size for better representation
         model = MLP_1024_512_256_128(input_size, hidden_size, config.num_class-1)
         # Apply Kaiming initialization
-        init_weights(model, init_type="kaiming")
+        init_weights(config, model, init_type="kaiming")
 
     elif model_type == 'denseNet121':
         model = CustomDenseNet121(config, in_channels=1, with_head=1)

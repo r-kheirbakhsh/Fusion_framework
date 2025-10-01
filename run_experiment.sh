@@ -4,11 +4,11 @@
 CODEBASE="/your/path/to/Fusion_framework"   # the path to the codebase
 PROJECT_NAME='Glioma_Classification'        # the name of the project, it will be used for logging to Wandb
 FUSION_STRATEGY='L'     # or 'ELF' or 'ERF' or 'ISF' or 'IMF'
-DATASET_CSV_PATH='/your/path/to/dataset_metadata.csv'
+DATASET_CSV_PATH='/your/path/to/dataset_metadata.csv'   # the path to the csv file containing the metadata of the dataset
 TRAIN_CSV_PATH='-'  # if you do not want to have cross-validation, you can provide the path to the csv file containing the metadata of each slice for training and change the code accordingly
 VAL_CSV_PATH='-'    # if you do not want to have cross-validation, you can provide the path to the csv file containing the metadata of each slice for validation and change the code accordingly
 TEST_CSV_PATH='-'   # if you do not want to have cross-validation, you can provide the path to the csv file containing the metadata of each slice for testing and change the code accordingly
-DATASET_IMAGE_PATH='/your/path/to/UCSF-PDGM-SLICED'
+DATASET_IMAGE_PATH='/your/path/to/UCSF-PDGM-SLICED'  # the path to the folder containing the sliced MRI scans
 LABEL=4         # the column containing labels for WHO_grade on dataset_metadata.csv file
 NUM_CLASS=2     # binary classification
 AXIS=2          # axis along which the slices are to be taken -> 0: Sagittal, 1: Coronal, 2: Axial
@@ -16,7 +16,7 @@ MODALITIES=("Clinical" "T1_bias" "T1c_bias" "T2_bias" "FLAIR_bias")
 SCALE_CLINICAL_MODALITY='Minmax'    # Or 'Quantile-normal' or 'Non_scaled'
 MRI_MODEL='denseNet121'             # used for L, ELF, ISF, IMF, and ISF with MWB
 CL_MODEL='AutoInt'                  # used for L, ELF, ISF, IMF, and ISF with MWB
-FUSED_MODEL='majority_voting'       # or 'probability_averaging' for L, 'MLP' for ERF, 'Inter_1_concat' for ELF (the encoder layers will be freezed), 'Inter_1_concat' for ISF, 'Inter_2_concat' for IMF, and 'Inter_1_concat_attn' for ISF with MWB
+FUSED_MODEL='majority_voting'       # or 'probability_averaging' for L, 'MLP_1024_512_256_128' for ERF, 'Inter_1_concat' for ELF (the encoder layers will be freezed), 'Inter_1_concat' for ISF, 'Inter_2_concat' for IMF, and 'Inter_1_concat_attn' for ISF with MWB
 PRETRAINED=1
 LR_MRI=5e-5
 LR_CL=5e-3
@@ -37,7 +37,7 @@ FOLD=100        # for the start, use 100, then it will be changed to 0, 1, 2, ..
 LOGFILE="log_${SEED}.log"
 
 python ${CODEBASE}/train_test.py --project_name $PROJECT_NAME \
-                    --fusion_method $FUSION_METHOD \
+                    --fusion_strategy $FUSION_STRATEGY \
                     --dataset_csv_path $DATASET_CSV_PATH \
                     --train_csv_path $TRAIN_CSV_PATH \
                     --val_csv_path $VAL_CSV_PATH \

@@ -189,8 +189,6 @@ class Model:
         y_labels = np.array(y_labels)
         y_outputs = np.array(y_outputs)
         y_predicted = np.array(y_predicted)
-        print(f"True labels shape: {y_labels.shape}, True labels type: {type(y_labels)}")
-        print(f"Predicted shape: {y_outputs.shape}, Predicted type: {type(y_outputs)}")
 
         if self.config.fused_model in ['Inter_1_concat_attn']:
             all_weights = np.array(all_weights)
@@ -235,7 +233,7 @@ class Model:
                 train_df = slice_to_patient_dataset(train_slice_df) # Change dataset from slice level to patient level
                 val_df = slice_to_patient_dataset(val_slice_df)
 
-            self._train_model_early_1(train_df, val_df, modality, 1)
+            self._train_model_ELF(train_df, val_df, modality, 1)
 
             print(f'Training the model for {modality} modality on fold {self.config.fold} completed.')
             train_time = (time.time() - start_time) / 60
@@ -355,9 +353,7 @@ class Model:
         model = model.to(device)
 
         # Define loss function
-        match self.config.num_class:
-            case 2: criterion = nn.BCEWithLogitsLoss()  # For binary classification
-            case 3: criterion = nn.CrossEntropyLoss()  # For multi-class classification               
+        criterion = nn.BCEWithLogitsLoss()  # For binary classification              
 
         nn_trainer = nn_Trainer_early(model, modality, criterion, optimizer,
                             config = self.config,
@@ -660,13 +656,13 @@ class Model:
         # Define optimizer with different learning rates
         if 'Clinical' in self.config.modalities:
             optimizer = optim.AdamW([
-                {'params': model.mri_encoders.parameters(), 'lr': self.config.lr_mri, 'weight_decay': self.config.lmbda},
+                {'params': model.mri_encoder.parameters(), 'lr': self.config.lr_mri, 'weight_decay': self.config.lmbda},
                 {'params': model.clinical_encoder.parameters(), 'lr': self.config.lr_cl, 'weight_decay': self.config.lmbda},
                 {'params': model.classifier.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda}
                 ])
         else:
             optimizer = optim.AdamW([
-                {'params': model.mri_encoders.parameters(), 'lr': self.config.lr_mri, 'weight_decay': self.config.lmbda},
+                {'params': model.mri_encoder.parameters(), 'lr': self.config.lr_mri, 'weight_decay': self.config.lmbda},
                 {'params': model.classifier.parameters(), 'lr': self.config.lr_fused, 'weight_decay': self.config.lmbda}
             ])
 

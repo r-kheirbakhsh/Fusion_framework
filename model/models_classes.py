@@ -216,22 +216,25 @@ class Inter_1_concat (nn.Module):
     def __init__ (self, config):
         super(Inter_1_concat, self).__init__()
         self.config = config
+        self.modalities = config.modalities
+        self.total_feature_size = 0 # Total feature size for fusion
 
         # Define encoders for each MRI modality
-        if 'T1_bias' in self.config.modalities or 'T1c_bias' in self.config.modalities or 'T2_bias' in self.config.modalities or 'FLAIR_bias' in self.config.modalities:
+        if any(m in self.modalities for m in ['T1_bias','T1c_bias','T2_bias','FLAIR_bias']):
             self.mri_encoders = nn.ModuleDict()
 
             if self.config.mri_model == 'denseNet121':
-                for modality in self.config.modalities:
+                for modality in self.modalities:
                     if modality in ['T1_bias', 'T1c_bias', 'T2_bias', 'FLAIR_bias']:
                         # Define MRI encoder
                         self.mri_encoders[modality] = CustomDenseNet121(self.config, in_channels=1 , with_head=0)
+                        self.total_feature_size += 1024  # DenseNet121 output size
 
             else:
                 raise ValueError(f"Unknown MRI model type: {self.config.mri_model}")
 
         # Define Clinical encoder
-        if 'Clinical' in self.config.modalities:
+        if 'Clinical' in self.modalities:
             if self.config.cl_model == 'AutoInt':
                 head_config = LinearHeadConfig(
                     layers="",
@@ -249,17 +252,11 @@ class Inter_1_concat (nn.Module):
                 model_config.head_config = head_config.__dict__
                 self.clinical_encoder = AutoIntModel_intermediate(config=model_config)
 
+                self.total_feature_size += 8 # self.clinical_encoder output size for the tuned model -> 64 with the default structure of AutoInt
+
             else:
                 raise ValueError(f"Unknown Clinical model type: {self.config.cl_model}")
             
-
-        # Total feature size for fusion
-        self.total_feature_size = len(self.mri_encoders) * 1024  # DenseNet121 and Swin_b output size
-        if 'Clinical' in self.config.modalities:
-            if self.config.cl_model == 'AutoInt':
-                self.total_feature_size += 8 # self.clinical_encoder.backbone.output_dim for thr tuned model -> 64 with the default structure of AutoInt
-            elif self.config.cl_model == 'MLP':
-                self.total_feature_size += 16  # MLP outputs 16-dim feature
 
         # Define classifier
         self.classifier = nn.Sequential(
@@ -285,7 +282,7 @@ class Inter_1_concat (nn.Module):
 
         for modality, encoder in self.mri_encoders.items():
             x = modalities_input_dict[modality]  # (B, 1, H, W) 
-            if self.config.fusion_method == 'early_1_fusion':
+            if self.config.fusion_strategy == 'ELF':
                 with torch.no_grad():
                     feat = encoder(x)
             else:
@@ -293,9 +290,9 @@ class Inter_1_concat (nn.Module):
 
             features.append(feat)
 
-        if 'Clinical' in self.config.modalities:
+        if 'Clinical' in self.modalities:
             x_c = modalities_input_dict['Clinical']
-            if self.config.fusion_method == 'early_1_fusion':
+            if self.config.fusion_strategy == 'ELF':
                 with torch.no_grad():
                     clinical_feat = self.clinical_encoder(x_c)  # (B, 16)
             else:
@@ -318,26 +315,28 @@ class Inter_2_concat (nn.Module):
     def __init__ (self, config):
         super(Inter_2_concat, self).__init__()
         self.config = config
+        self.modalities = config.modalities
+        self.total_feature_size = 0 # Total feature size for fusion
 
         # Define encoders for each MRI modality
-        # if 'T1_bias' in self.config.modalities or 'T1c_bias' in self.config.modalities or 'T2_bias' in self.config.modalities or 'FLAIR_bias' in self.config.modalities:
         if any(m in self.modalities for m in ['T1_bias','T1c_bias','T2_bias','FLAIR_bias']):
 
             # Calculate the number of the channel of the image (number of MRI modalities)
-            if 'Clinical' in self.config.modalities:
-                num_mri_modalities = len(self.config.modalities) - 1  # Exclude Clinical
+            if 'Clinical' in self.modalities:
+                num_mri_modalities = len(self.modalities) - 1  # Exclude Clinical
             else:
-                num_mri_modalities = len(self.config.modalities)  
+                num_mri_modalities = len(self.modalities)  
 
             if self.config.mri_model == 'denseNet121':                   
                 # define the MRI encoder
                 self.mri_encoder = CustomDenseNet121(self.config, in_channels=num_mri_modalities , with_head=0)
-
+                self.total_feature_size += 1024  # DenseNet121 output size
             else:
                 raise ValueError(f"Unknown MRI model type: {self.config.mri_model}")
 
+
         # Define Clinical encoder
-        if 'Clinical' in self.config.modalities:
+        if 'Clinical' in self.modalities:
             if self.config.cl_model == 'AutoInt':
                 head_config = LinearHeadConfig(
                     layers="",
@@ -354,23 +353,13 @@ class Inter_2_concat (nn.Module):
                 model_config.head_config = head_config.__dict__
                 self.clinical_encoder = AutoIntModel_intermediate(config=model_config)
 
+                self.total_feature_size += 8 # self.clinical_encoder output size for the tuned model -> 64 with the default structure of AutoInt
+
             else:
                 raise ValueError(f"Unknown Clinical model type: {self.config.cl_model}")
 
 
-        # Total feature size for fusion
-        if 'T1_bias' in self.config.modalities or 'T1c_bias' in self.config.modalities or 'T2_bias' in self.config.modalities or 'FLAIR_bias' in self.config.modalities:
-            self.total_feature_size = 1024  # DenseNet121/Swin_b output size
-        else:
-            self.total_feature_size = 0
-
-        if 'Clinical' in self.config.modalities:
-            if self.config.cl_model == 'AutoInt':
-                self.total_feature_size += 8 # self.clinical_encoder.backbone.output_dim for thr tuned model -> 64 with the default structure of AutoInt 
-            elif self.config.cl_model == 'MLP':
-                self.total_feature_size += 16  # MLP outputs 16-dim feature
-
-
+        # Define classifier
         self.classifier = nn.Sequential(
             nn.Linear(self.total_feature_size, 128),
             nn.LayerNorm(128),  # for small batch size (like 16) BatchNorm1d layer may make training inconsistant 
@@ -392,11 +381,11 @@ class Inter_2_concat (nn.Module):
     def forward(self, modalities_input_dict):
         features = []
 
-        if 'T1_bias' in self.config.modalities or 'T1c_bias' in self.config.modalities or 'T2_bias' in self.config.modalities or 'FLAIR_bias' in self.config.modalities:
+        if any(m in self.modalities for m in ['T1_bias','T1c_bias','T2_bias','FLAIR_bias']):
             mri_feat = self.mri_encoder(modalities_input_dict['MRI'])
             features.append(mri_feat)
 
-        if 'Clinical' in self.config.modalities:
+        if 'Clinical' in self.modalities:
             clinical_feat = self.clinical_encoder(modalities_input_dict['Clinical'])  # (B, 16)
             features.append(clinical_feat)
 
@@ -574,11 +563,10 @@ class Inter_1_concat_attn (nn.Module):
             else:
                 raise ValueError(f"Unknown Clinical model type: {self.config.cl_model}")  
 
-        # ----- Attention Fusion -----
+        # Define Modality Weighting Block
         self.modality_attention = ModalityAttention(self.config, input_dims, hidden_dim=256)
 
-
-        # ----- Classifier -----
+        # Define classifier 
         self.classifier = nn.Sequential(
             nn.Linear(256, 128),
             nn.LayerNorm(128),  # for small batch size (like 16) BatchNorm1d layer may make training inconsistant 

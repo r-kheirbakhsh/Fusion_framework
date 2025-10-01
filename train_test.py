@@ -76,7 +76,11 @@ def main(config):
         global_recall_weighted_avg.append(recall_w)
         global_precision_weighted_avg.append(precision_w)
 
+        print(f'Evaluation of {config.fusion_strategy} model on fold {fold} is finished and the metrics are saved in .text, .json, and .csv files.')
+
     # Print the average results across all folds
+    print('=========================================================')
+    print(f"Average metrics for {config.fusion_strategy} model across all folds:")
     print(f"Average Time: {sum(global_time) / len(global_time)}")
     print(f"Average Accuracy: {sum(global_acc) / len(global_acc)}")
     print(f"Average MCC: {sum(global_mcc) / len(global_mcc)}")

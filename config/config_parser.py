@@ -3,7 +3,7 @@ class Config:
 
     def __init__(self, args):
         self.project_name = args.project_name
-        self.fusion_method = args.fusion_method
+        self.fusion_strategy = args.fusion_strategy
         self.dataset_csv_path = args.dataset_csv_path
         self.train_csv_path = args.train_csv_path
         self.val_csv_path = args.val_csv_path
