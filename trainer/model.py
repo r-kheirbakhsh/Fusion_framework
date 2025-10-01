@@ -193,7 +193,7 @@ class Model:
         if self.config.fused_model in ['Inter_1_concat_attn']:
             all_weights = np.array(all_weights)
             mean_weights = all_weights.mean(axis=0).squeeze()
-            print(f"Average modality importance for fold {self.config.fold}:", mean_weights)
+            print(f"Average modality contribution scores for fold {self.config.fold} for {self.config.modalities} accordingly:", mean_weights)
             return y_labels, y_outputs, y_predicted, test_loss, all_weights
         
         else:

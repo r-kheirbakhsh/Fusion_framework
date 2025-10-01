@@ -89,13 +89,14 @@ def main(config):
     print(f"Average precision_weighted_avg: {sum(global_precision_weighted_avg) / len(global_precision_weighted_avg)}")
 
     if config.fused_model in ['Inter_1_concat_attn']:
-        print('=========================================================')
-        print(f"Mean and Std of modality_cont_avg: {calculate_mean_std(global_modality_cont_avg)}")
-        print(f"Mean and Std of modality_cont_label_0_avg: {calculate_mean_std(global_modality_cont_label_0_avg)}")
-        print(f"Mean and Std of modality_cont_label_1_avg: {calculate_mean_std(global_modality_cont_label_1_avg)}")
-        print(f"Mean and Std of modality_cont_correct_avg: {calculate_mean_std(global_modality_cont_correct_avg)}")
-        print(f"Mean and Std of modality_cont_label_0_correct_avg: {calculate_mean_std(global_modality_cont_label_0_correct_avg)}")
-        print(f"Mean and Std of modality_cont_label_1_correct_avg: {calculate_mean_std(global_modality_cont_label_1_correct_avg)}")
+        print("=========================================================")
+        print(f"Modality contribution score statistics across all folds for {config.modalities} accordingly:")
+        print(f"Mean and Std of modality_cont (avg): {calculate_mean_std(global_modality_cont_avg)}")
+        print(f"Mean and Std of modality_cont for label 0 (avg): {calculate_mean_std(global_modality_cont_label_0_avg)}")
+        print(f"Mean and Std of modality_cont for label 1 (avg): {calculate_mean_std(global_modality_cont_label_1_avg)}")
+        print(f"Mean and Std of modality_cont for correctly predicted slices (avg): {calculate_mean_std(global_modality_cont_correct_avg)}")
+        print(f"Mean and Std of modality_cont for correctly predicted slices with label 0 (avg): {calculate_mean_std(global_modality_cont_label_0_correct_avg)}")
+        print(f"Mean and Std of modality_cont for correctly predicted slices with label 1 (avg): {calculate_mean_std(global_modality_cont_label_1_correct_avg)}")
 
 
     return
