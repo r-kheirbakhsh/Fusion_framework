@@ -192,9 +192,8 @@ class Model:
 
         if self.config.fused_model in ['Inter_1_concat_attn']:
             all_weights = np.array(all_weights)
-            print(f"Attention weights shape: {all_weights.shape}", f"Attention weights type: {type(all_weights)}")
             mean_weights = all_weights.mean(axis=0).squeeze()
-            print("Average modality importance:", mean_weights)
+            print(f"Average modality importance for fold {self.config.fold}:", mean_weights)
             return y_labels, y_outputs, y_predicted, test_loss, all_weights
         
         else:
@@ -612,10 +611,11 @@ class Model:
             print("Model checkpoint not found. Ensure the path to 'best_model.pth' is correct.")
             return
 
-        if self.config.fused_model in ['Inter_1_concat_attn', 'Inter_1_gated_attn']:
+        if self.config.fused_model in ['Inter_1_concat_attn']:
             y_labels, y_outputs, y_predicted, test_loss, all_weights = self._test_loop(model, test_dataloader)
         else:
             y_labels, y_outputs, y_predicted, test_loss = self._test_loop(model, test_dataloader)
+            all_weights = None
 
         return calculate_save_metrics_intermediate_1(self.config, modality, y_labels, y_predicted, training_time_spent, test_loss, all_weights)
 

@@ -93,9 +93,10 @@ def main(config):
         print(f"Mean and Std of modality_cont_avg: {calculate_mean_std(global_modality_cont_avg)}")
         print(f"Mean and Std of modality_cont_label_0_avg: {calculate_mean_std(global_modality_cont_label_0_avg)}")
         print(f"Mean and Std of modality_cont_label_1_avg: {calculate_mean_std(global_modality_cont_label_1_avg)}")
+        print(f"Mean and Std of modality_cont_correct_avg: {calculate_mean_std(global_modality_cont_correct_avg)}")
         print(f"Mean and Std of modality_cont_label_0_correct_avg: {calculate_mean_std(global_modality_cont_label_0_correct_avg)}")
         print(f"Mean and Std of modality_cont_label_1_correct_avg: {calculate_mean_std(global_modality_cont_label_1_correct_avg)}")
-        print(f"Mean and Std of modality_cont_correct_avg: {calculate_mean_std(global_modality_cont_correct_avg)}")
+
 
     return
 

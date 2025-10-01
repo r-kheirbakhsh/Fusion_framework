@@ -984,7 +984,7 @@ def calculate_save_metrics_intermediate_1(config, modality, y_labels, y_predicte
     # Save metrics to a text file
     with open(f'fold_{config.fold}_metrics.txt', 'w') as f:
         f.write(f'Dataset Spec: {axis_dic[config.axis]}_43_56_396_seed_{config.seed}_{config.fold}\n')
-        f.write(f'Fusion method: {config.fusion_method}\n')
+        f.write(f'Fusion strategy: {config.fusion_strategy}\n')
         f.write(f'Modality: {modality}\n')
         f.write(f'Model: {config.fused_model}\n')
         f.write(f'MRI backbone: {config.mri_model}\n')
@@ -1010,7 +1010,7 @@ def calculate_save_metrics_intermediate_1(config, modality, y_labels, y_predicte
     results = {
         "config": {
             "dataset": f'{axis_dic[config.axis]}_43_56_396_seed_{config.seed}_{config.fold}',
-            "fusion_method": config.fusion_method,
+            "fusion_strategy": config.fusion_strategy,
             "modality": modality,
             "model": config.fused_model,
             "mri_backbone": config.mri_model,
