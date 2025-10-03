@@ -470,7 +470,7 @@ class CustomDenseNet121(nn.Module):
 
 ############################################ End of custom denseNet121 ############################################
 
-################################################### Modality Weighting Block ###################################################
+###################################### Modality Weighting Block ###################################################
 
 
 class ModalityAttention(nn.Module):
@@ -504,14 +504,14 @@ class ModalityAttention(nn.Module):
         proj_feats = [proj(f) for proj, f in zip(self.projections, feats)]  
         proj_feats = torch.stack(proj_feats, dim=1)  # (B, M, hidden_dim)
 
-        scores = self.attn(proj_feats)               # (B, M, 1)
-        attn_weights = torch.softmax(scores, dim=1)  # (B, M, 1)
+        scores = self.attn(proj_feats)               # -> (B, M, 1)
+        attn_weights = torch.softmax(scores, dim=1)  # -> (B, M, 1)
 
         fused = torch.sum(attn_weights * proj_feats, dim=1)  # (B, hidden_dim)
         return fused, attn_weights
 
 
-################################################ End of Modality Weighting Block ################################################
+############################################ End of Modality Weighting Block ############################################
 
 ############################################### Inter_1_concat_attn Model ###############################################
 
