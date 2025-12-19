@@ -8,19 +8,19 @@ The fusion architectures in our framework are illustrated in the following figur
 
 
 ## Dataset used
-This project is based on the the University of California, San Francisco Preoperative Diffuse Glioma MRI (UCSF-PDGM) dataset [[1]](#1), which includes 501 adult patients with WHO grade 2-4 diffuse gliomas (43, 56, and 396 patients, respectively, for grades 2, 3, and 4) who underwent preoperative MRI and resection between 2015 and 2021. The dataset provides standardized 3T MRI scans across multiple sequences, including T1 (pre- and post-contrast), T2, and FLAIR, along with advanced modalities such as DWI, SWI, and perfusion imaging. It also contains clinical and molecular data (age, sex, tumour grade, IDH mutation, MGMT methylation) and expert tumour segmentations.
+This project is based on the the University of California, San Francisco Preoperative Diffuse Glioma MRI (UCSF-PDGM) dataset [[1]](#1), which includes 501 adult patients with WHO grade 2-4 diffuse gliomas (43, 56, and 396 patients, respectively, for grades 2, 3, and 4) who underwent preoperative MRI and resection between 2015 and 2021. The dataset provides standardized 3T MRI scans across multiple sequences, including T1 (pre- and post-contrast), T2, and FLAIR, as well as advanced modalities such as DWI, SWI, and perfusion imaging. It also contains clinical and molecular data (age, sex, tumour grade, IDH mutation, MGMT methylation) and expert tumour segmentations.
 
 The UCSF-PDGM dataset is available at https://www.cancerimagingarchive.net/collection/ucsf-pdgm/. Access requires permission from the data providers, and researchers must request approval directly from the UCSF repository.
 
-## Datset preparation
+## Dataset preparation
 To construct the input data for our framework, we leveraged the provided brain masks and tumor segmentation masks. Once you have access to the UCSF glioma dataset, the following preprocessing steps are required to prepare the data for training with this framework:
 
 1. MRI Slice Extraction
-    * Use the provided brain masks to identify slices containing brain. 
-    * Extract the corresponding 2D slices for each MRI modality (T1, T1c, T2, FLAIR) from the 3D files of ***\*_bias.nii.gz***. In our experiments we uses Axial plane, if you want to choose other planes, change the struchture/code accordingly.
+    * Use the provided brain masks to identify slices containing the brain. 
+    * Extract the corresponding 2D slices for each MRI modality (T1, T1c, T2, FLAIR) from the 3D files of ***\*_bias.nii.gz***. In our experiments, we use the Axial plane. If you want to choose other planes, change the structure/code accordingly.
     * Store the slices in ***.npz*** format, one file for each modality according to the dataset structure (refer to **"4. Dataset Structure"** for more details).
     * Use the provided tumor segmentation masks to identify slices containing tumor regions.
-    * Save the indexis to the slices with tumour in a CSV file (refer to **"4. Dataset Structure"** for more details).
+    * Save the indices to the slices with tumour in a CSV file (refer to **"4. Dataset Structure"** for more details).
 
 2. MRI Preprocessing
     * Since the UCSF dataset already provides preprocessed MRI scans (in ***\*_bias.nii.gz*** files), no additional preprocessing (e.g., skull-stripping, registration, bias-field correction) is required.
@@ -31,7 +31,7 @@ To construct the input data for our framework, we leveraged the provided brain m
     * Min–max scaling to normalize age values between 0 and 1 will be done by the framework.
 
 4. Dataset Structure
-    * Organize the 2D MRI slices so that each patient has a unique ID, with MRI slices stored in a consistent folder as shown bellow:
+    * Organize the 2D MRI slices so that each patient has a unique ID, with MRI slices stored in a consistent folder as shown below:
 
     ```
         UCSF-PDGM-SLICED/
@@ -96,10 +96,10 @@ To construct the input data for our framework, we leveraged the provided brain m
     ```    
 
 ## Table of contents
-The code in this repository is organised as follow:
-- [config](config/) — Configuration files (e.g. default hyperparameters, paths)  
+The code in this repository is organised as follows:
+- [config](config/) — Configuration files (e.g,. default hyperparameters, paths)  
 - [dataloader](dataloader/) — Data loading and preprocessing modules (MRI, clinical, slice extraction)  
-- [fusion](fusion/) — Implementation of fusion methods (just for late fusion, the other stategies do fusion in the neural network architectures)  
+- [fusion](fusion/) — Implementation of fusion methods (just for late fusion, the other strategies do fusion in the neural network architectures)  
 - [model](model/) — Neural network model definitions (DenseNet, AutoInt, fusion architectures)  
 - [trainer](trainer/) — Training, validation, and testing logic (train_test pipeline, loss, optimization)  
 - [utils](utils/) — Utility functions (metrics, logging, helpers)  
@@ -108,15 +108,15 @@ The code in this repository is organised as follow:
 - [README.md](README.md) — Project overview, instructions, and documentation
 
 ## How to run the code
-The entry point to the framework is the ***train_test.py*** file. Ensure that the UCSF dataset (MRI modalities and clinical metadata) is preprocessed and organized as described in the **"Dataset Preparation"**. Update the value of the arguments in the ***run_experiments.sh*** script and ensure that the dataset pathes point to your local copies. The code can be run by:
+The entry point to the framework is the ***train_test.py*** file. Ensure that the UCSF dataset (MRI modalities and clinical metadata) is preprocessed and organized as described in the **"Dataset Preparation"**. Update the value of the arguments in the ***run_experiments.sh*** script and ensure that the dataset paths point to your local copies. The code can be run by:
 ```
 chmod +x run_experiment.sh
 ``` 
-Training/validation logs are saved to ***log_\<seed\>._log***. Model checkpoints and metrics are written to the corresponding experiment directory. In addition, the framework uses Wandb for saving the training and validation logs, make sure that you are connected to you Wandb account or change the code to avoid logging there.
+Training/validation logs are saved to ***log_\<seed\>._log***. Model checkpoints and metrics are written to the corresponding experiment directory. In addition, the framework uses Wandb for saving the training and validation logs. Make sure that you are connected to your Wandb account or change the code to avoid logging in there.
 
 ## References
 <a id="1">[1]</a> 
-Calabrese, E., Villanueva-Meyer, J.E., Rudie, J.D., Rauschecker, A.M., Baid, U., Bakas, S., Cha, S., Mongan, J.T. and Hess, C.P., 2022. The University of California San Francisco preoperative diffuse glioma MRI dataset. Radiology: Artificial Intelligence, 4(6), p.e220058.
+Calabrese, E., Villanueva-Meyer, J.E., Rudie, J.D., Rauschecker, A.M., Baid, U., Bakas, S., Cha, S., Mongan, J.T., and Hess, C.P., 2022. The University of California San Francisco preoperative diffuse glioma MRI dataset. Radiology: Artificial Intelligence, 4(6), p.e220058.
 
 
 
